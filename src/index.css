@@ -198,3 +198,24 @@ button {
   min-width: 44px;
   min-height: 44px;
 }
+
+nav.sticky {
+  padding-left: 1rem;  /* besserer Abstand links */
+  padding-right: 1rem; /* besserer Abstand rechts */
+  overflow-x: auto;    /* ermöglicht horizontales Scrollen */
+  -webkit-overflow-scrolling: touch; /* smoother scroll auf iOS */
+  scrollbar-width: none; /* Firefox scrollbar ausblenden */
+}
+
+nav.sticky::-webkit-scrollbar {
+  display: none; /* Chrome scrollbar ausblenden */
+}
+
+nav.sticky {
+  top: 69px;
+  z-index: 29; /* Oder 30, je nachdem wie der Header ist */
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(10px);
+  /* ...restliche Styles */
+}
+
