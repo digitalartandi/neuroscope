@@ -17,11 +17,11 @@ const FREQ_0_4 = [
 ];
 
 const IMPACT_1_5 = [
-  { value: 1, label: "Keine" },
-  { value: 2, label: "Geringe" },
-  { value: 3, label: "Mäßige" },
-  { value: 4, label: "Starke" },
-  { value: 5, label: "Extreme" },
+  { value: 1, label: "Sehr schlecht" },
+  { value: 2, label: "Schlecht" },
+  { value: 3, label: "Mäßig" },
+  { value: 4, label: "Gut" },
+  { value: 5, label: "Sehr gut" },
 ];
 
 const POS_0_4 = [
