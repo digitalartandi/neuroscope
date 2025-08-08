@@ -7,7 +7,53 @@ import NBack from "./modules/NBack";
 import Stroop from "./modules/Stroop";
 import Trails from "./modules/Trails";
 
+
+
+function AnimatedBlurBackground() {
+  return <div className="bg-animated-blur"></div>;
+}
+
+export default function App() {
+  const [currentModule, setCurrentModule] = useState(null);
+
+  const renderModule = () => {
+    switch (currentModule) {
+      case "TowerOfLondon":
+        return <TowerOfLondon />;
+      case "NBack":
+        return <NBack />;
+      case "Stroop":
+        return <Stroop />;
+      case "Trails":
+        return <Trails />;
+      default:
+        return (
+          <div className="start-screen">
+            <h1>Willkommen zu NeuroScope</h1>
+            <p>Wähle einen Test, um zu starten.</p>
+          </div>
+        );
+    }
+  };
+
+  return (
+    <>
+      {/* Hintergrund-Blur */}
+      <AnimatedBlurBackground />
+
+      {/* Navigation */}
+      <Nav onSelectModule={setCurrentModule} />
+
+      {/* Hauptinhalt */}
+      <main>{renderModule()}</main>
+    </>
+  );
+}
+
+
+
 /* ============ small helpers ============ */
+const STORAGE_KEY = "psyche_state_v1"; // versioniert, um künftige Migrationen zu erleichtern
 const isScale = (m) => m?.kind === "scale";
 const answerableCount = (bank) =>
   bank.filter(isScale).reduce((n, m) => n + (m.items?.length ?? 0), 0);
@@ -25,7 +71,7 @@ function Header({ onSave, onRequestReset }) {
       <div className="mx-auto max-w-xl sm:max-w-2xl lg:max-w-3xl px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <span aria-hidden className="inline-block h-3 w-3 rounded-full bg-blue-500" />
-          <span className="text-sm font-medium">Innere Reise</span>
+          <span className="text-sm font-medium">Neuroscope</span>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -107,7 +153,7 @@ function Progress({ percent, label }) {
   );
 }
 
-/* ===== Background FX (openai-like moving blur) ===== */
+/* ===== Background FX (OpenAI-like moving blur) ===== */
 function BackgroundFX(){
   return (
     <div className="fx-wrap" aria-hidden="true">
@@ -125,7 +171,7 @@ function Landing({ onStart }) {
       <div className="max-w-xl sm:max-w-2xl lg:max-w-3xl w-full">
         <div className="hero-card rounded-3xl p-6 sm:p-8">
           <h1 className="text-3xl sm:text-4xl lg:text-5xl font-semibold tracking-tight">
-            Willkommen
+            Neuroscope
           </h1>
           <p className="mt-3 text-gray-700 text-base sm:text-lg leading-relaxed">
             Eine traumasensible, ICD-11-orientierte Reise zu deiner Psyche – klar,
@@ -150,8 +196,14 @@ export default function App() {
   const [ans, setAns] = useState({});
   const [safety, setSafety] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
-  const [announce, setAnnounce] = useState(""); // aria-live
+
+  // Feedback/Toast + SR
+  const [announce, setAnnounce] = useState(""); // SR
+  const [toast, setToast] = useState(null);     // sichtbar
   const focusRef = useRef(null);
+
+  // Hydration-Flag: erst lesen, dann speichern erlauben
+  const [hydrated, setHydrated] = useState(false);
 
   /* ---- DM Sans einbinden (ohne index.html) ---- */
   useEffect(() => {
@@ -170,7 +222,7 @@ export default function App() {
     return () => { pre1.remove(); pre2.remove(); font.remove(); };
   }, []);
 
-  // bg + fx + utilities
+  // Styles (Blur/Buttons/Toast)
   useEffect(() => {
     const style = document.createElement("style");
     style.innerHTML = `
@@ -194,34 +246,27 @@ export default function App() {
       .animate-fade-in{ animation:fadein .35s ease-out both }
       @keyframes fadein{ from{opacity:0; transform: translateY(6px)} to{opacity:1; transform: translateY(0)} }
 
-      /* ---- Moving Blur FX ---- */
-      .fx-wrap{ position:absolute; inset:0; overflow:hidden; pointer-events:none; }
-      .fx-blur{ position:absolute; border-radius:9999px; filter:blur(60px); opacity:.7; mix-blend-mode: normal; will-change:transform, opacity, filter; }
+      /* ---- Moving Blur FX (OpenAI-like, sichtbar asynchron) ---- */
+      .fx-wrap{ position:absolute; inset:0; overflow:hidden; pointer-events:none; z-index:0; }
+      .fx-blur{ position:absolute; border-radius:9999px; filter:blur(100px); opacity:.65; mix-blend-mode:screen; will-change:transform,opacity; }
       .fx-a{
-        width:45vw; height:45vw; left:-10vw; top:-6vw;
-        background: radial-gradient(35% 35% at 50% 50%, #6EE7B7 0%, rgba(110,231,183,0) 60%),
-                    radial-gradient(30% 30% at 70% 40%, #60A5FA 0%, rgba(96,165,250,0) 60%),
-                    radial-gradient(28% 28% at 30% 60%, #F472B6 0%, rgba(244,114,182,0) 60%);
-        animation: morph-a 26s ease-in-out infinite alternate, float 18s ease-in-out infinite;
+        width:60vw; height:60vw; top:-20vw; left:-20vw;
+        background: radial-gradient(circle at 30% 30%, rgba(99,102,241,.8), transparent 70%);
+        animation: float-a 40s ease-in-out infinite alternate;
       }
       .fx-b{
-        width:55vw; height:55vw; right:-8vw; top:-2vw;
-        background: radial-gradient(35% 35% at 40% 50%, #C4B5FD 0%, rgba(196,181,253,0) 60%),
-                    radial-gradient(30% 30% at 70% 60%, #93C5FD 0%, rgba(147,197,253,0) 60%),
-                    radial-gradient(28% 28% at 30% 30%, #FDBA74 0%, rgba(253,186,116,0) 60%);
-        animation: morph-b 28s ease-in-out infinite alternate, float 22s ease-in-out infinite reverse;
+        width:50vw; height:50vw; bottom:-15vw; right:-15vw;
+        background: radial-gradient(circle at 70% 70%, rgba(236,72,153,.8), transparent 70%);
+        animation: float-b 55s ease-in-out infinite alternate;
       }
       .fx-c{
-        width:48vw; height:48vw; left:15vw; bottom:-12vw;
-        background: radial-gradient(35% 35% at 50% 50%, #FCA5A5 0%, rgba(252,165,165,0) 60%),
-                    radial-gradient(30% 30% at 65% 35%, #86EFAC 0%, rgba(134,239,172,0) 60%),
-                    radial-gradient(28% 28% at 30% 70%, #A5B4FC 0%, rgba(165,180,252,0) 60%);
-        animation: morph-c 24s ease-in-out infinite alternate, float 20s ease-in-out infinite;
+        width:55vw; height:55vw; top:10vw; right:-25vw;
+        background: radial-gradient(circle at 50% 50%, rgba(34,197,94,.8), transparent 70%);
+        animation: float-c 48s ease-in-out infinite alternate;
       }
-      @keyframes morph-a{ 0%{transform:translate3d(0,0,0) rotate(0) scale(1)} 100%{transform:translate3d(4vw,-2vw,0) rotate(15deg) scale(1.08)} }
-      @keyframes morph-b{ 0%{transform:translate3d(0,0,0) rotate(0) scale(1)} 100%{transform:translate3d(-3vw,1vw,0) rotate(-12deg) scale(1.1)} }
-      @keyframes morph-c{ 0%{transform:translate3d(0,0,0) rotate(0) scale(1)} 100%{transform:translate3d(2vw,-2vw,0) rotate(10deg) scale(1.06)} }
-      @keyframes float{ 0%,100%{ transform: translateY(0) } 50%{ transform: translateY(-0.6vw) } }
+      @keyframes float-a{ 0%{transform:translate(0,0) scale(1)} 50%{transform:translate(5vw,-3vw) scale(1.05)} 100%{transform:translate(-3vw,4vw) scale(1.1)} }
+      @keyframes float-b{ 0%{transform:translate(0,0) scale(1)} 50%{transform:translate(-4vw,5vw) scale(1.08)} 100%{transform:translate(3vw,-4vw) scale(1.03)} }
+      @keyframes float-c{ 0%{transform:translate(0,0) scale(1)} 50%{transform:translate(3vw,3vw) scale(1.07)} 100%{transform:translate(-5vw,-2vw) scale(1.04)} }
 
       /* Glass Card für Hero */
       .hero-card{
@@ -230,24 +275,69 @@ export default function App() {
         border: 1px solid rgba(255,255,255,.5);
         box-shadow: 0 10px 30px rgba(2,6,23,.08);
       }
+
+      /* Simple toast */
+      .toast{
+        position:fixed; left:50%; bottom:84px; transform:translateX(-50%);
+        background:rgba(17,24,39,.92); color:#fff; padding:.6rem .9rem; border-radius:.75rem;
+        box-shadow:0 10px 20px rgba(2,6,23,.25); z-index:60; font-size:.875rem;
+        animation:fadein .25s ease-out both;
+      }
     `;
     document.head.appendChild(style);
     return () => document.head.removeChild(style);
   }, []);
 
-  // restore progress
+  /* ---------- RESTORE ON MOUNT (ohne Überschreiben) ---------- */
   useEffect(() => {
     try {
-      const saved = JSON.parse(localStorage.getItem("psyche_state") || "{}");
-      if (saved.answers) setAns(saved.answers);
-      if (Number.isFinite(saved.idx)) setIdx(saved.idx);
-      if (saved.started) setStarted(true);
-    } catch {}
+      // Migration vom alten Key
+      const rawNew = localStorage.getItem(STORAGE_KEY);
+      const rawOld = rawNew ?? localStorage.getItem("psyche_state"); // fallback
+      const saved = rawOld ? JSON.parse(rawOld) : null;
+
+      if (saved && typeof saved === "object") {
+        if (saved.answers) setAns(saved.answers);
+        if (Number.isFinite(saved.idx)) setIdx(saved.idx);
+        if (saved.started) setStarted(true);
+      }
+    } catch (e) {
+      console.warn("Restore failed:", e);
+    } finally {
+      setHydrated(true); // erst danach dürfen Autosaves laufen
+    }
   }, []);
-  // autosave
+  /* ----------------------------------------------------------- */
+
+  /* ---------- AUTOSAVE (nur nach Hydration & bei Fortschritt) ---------- */
+  const hasProgress = started || idx > 0 || Object.keys(ans).length > 0;
   useEffect(() => {
-    localStorage.setItem("psyche_state", JSON.stringify({ started, idx, answers: ans }));
+    if (!hydrated) return;        // nie vor dem ersten Laden speichern
+    if (!hasProgress) return;     // kein sinnloses Überschreiben leerer Stände
+
+    // Debounce kleines Save, falls in kurzer Zeit mehrere Änderungen kommen
+    const t = setTimeout(() => {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({ started, idx, answers: ans }));
+      } catch (e) {
+        console.error("Autosave failed:", e);
+      }
+    }, 250);
+    return () => clearTimeout(t);
+  }, [hydrated, hasProgress, started, idx, ans]);
+  /* --------------------------------------------------------------------- */
+
+  /* ---------- SAVE ON UNLOAD (zusätzliche Sicherheit) ---------- */
+  useEffect(() => {
+    const handler = () => {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({ started, idx, answers: ans }));
+      } catch {}
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
   }, [started, idx, ans]);
+  /* ---------------------------------------------------------------- */
 
   const current = BANK[idx];
   const total = useMemo(() => answerableCount(BANK), []);
@@ -255,7 +345,6 @@ export default function App() {
   const progress = total ? Math.round((completed / total) * 100) : 0;
 
   useEffect(() => {
-    // move focus to section header for SR users
     if (focusRef.current) focusRef.current.focus();
   }, [idx]);
 
@@ -277,7 +366,6 @@ export default function App() {
   }
 
   function next() {
-    // contextual safety ping (e.g. suicide item)
     if (current?.id === "mood" && (ans["m_suicide"] ?? 0) >= 1) {
       setSafety(true);
     }
@@ -293,16 +381,33 @@ export default function App() {
   function back() {
     if (idx > 0) setIdx(idx - 1);
   }
+
+  // Manuelles Speichern mit sichtbarem Feedback
   function saveNow() {
-    localStorage.setItem("psyche_state", JSON.stringify({ started, idx, answers: ans }));
-    setAnnounce("Gespeichert.");
-    setTimeout(() => setAnnounce(""), 1500);
+    try {
+      const payload = { started, idx, answers: ans };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+      setAnnounce("Gespeichert."); // SR
+      setToast({ type: "success", msg: "Fortschritt gespeichert" });
+      setTimeout(() => setToast(null), 2500);
+      return true;
+    } catch (e) {
+      console.error("Save failed:", e);
+      setAnnounce("Speichern fehlgeschlagen.");
+      setToast({ type: "error", msg: "Speichern fehlgeschlagen" });
+      setTimeout(() => setToast(null), 3500);
+      return false;
+    }
   }
+
   function resetAll() {
     setAns({});
     setIdx(0);
     setStarted(false);
-    localStorage.removeItem("psyche_state");
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem("psyche_state"); // alten Key vorsorglich auch löschen
+    } catch {}
     setConfirmReset(false);
     setTimeout(() => window.scrollTo({ top: 0, behavior: "smooth" }), 0);
   }
@@ -319,6 +424,11 @@ export default function App() {
           <Landing onStart={() => setStarted(true)} />
         </main>
         <Footer />
+
+        {/* SR live region global */}
+        <div className="sr-only" aria-live="polite">{announce}</div>
+        {/* Visible toast */}
+        {toast && <div className="toast">{toast.msg}</div>}
       </div>
     );
   }
@@ -493,6 +603,9 @@ export default function App() {
           </Card>
         </div>
       )}
+
+      {/* Visible toast (global) */}
+      {toast && <div className="toast" role="status">{toast.msg}</div>}
     </div>
   );
 }
