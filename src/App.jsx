@@ -9,48 +9,6 @@ import Trails from "./modules/Trails";
 
 
 
-function AnimatedBlurBackground() {
-  return <div className="bg-animated-blur"></div>;
-}
-
-export default function App() {
-  const [currentModule, setCurrentModule] = useState(null);
-
-  const renderModule = () => {
-    switch (currentModule) {
-      case "TowerOfLondon":
-        return <TowerOfLondon />;
-      case "NBack":
-        return <NBack />;
-      case "Stroop":
-        return <Stroop />;
-      case "Trails":
-        return <Trails />;
-      default:
-        return (
-          <div className="start-screen">
-            <h1>Willkommen zu NeuroScope</h1>
-            <p>Wähle einen Test, um zu starten.</p>
-          </div>
-        );
-    }
-  };
-
-  return (
-    <>
-      {/* Hintergrund-Blur */}
-      <AnimatedBlurBackground />
-
-      {/* Navigation */}
-      <Nav onSelectModule={setCurrentModule} />
-
-      {/* Hauptinhalt */}
-      <main>{renderModule()}</main>
-    </>
-  );
-}
-
-
 
 /* ============ small helpers ============ */
 const STORAGE_KEY = "psyche_state_v1"; // versioniert, um künftige Migrationen zu erleichtern
