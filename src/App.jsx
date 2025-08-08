@@ -1,11 +1,15 @@
 // src/App.jsx
-import { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState, lazy, Suspense } from "react";
+import LoadingScreen from "./components/LoadingScreen";
 import { BANK } from "./data/bank";
 import Nav from "./components/Nav";
-import TowerOfLondon from "./modules/TowerOfLondon";
-import NBack from "./modules/NBack";
-import Stroop from "./modules/Stroop";
-import Trails from "./modules/Trails";
+import SummaryCard from "./components/SummaryCard";
+
+// Lazy load cognitive modules for performance optimization
+const TowerOfLondon = lazy(() => import("./modules/TowerOfLondon"));
+const NBack = lazy(() => import("./modules/NBack"));
+const Stroop = lazy(() => import("./modules/Stroop"));
+const Trails = lazy(() => import("./modules/Trails"));
 
 
 
@@ -22,145 +26,28 @@ const answeredCount = (ans, bank) => {
   return keys.filter((k) => ans[k] !== undefined).length;
 };
 
-/* ============ UI atoms ============ */
-function Header({ onSave, onRequestReset }) {
-  return (
-    <header className="sticky top-0 z-30 bg-white/80 backdrop-blur border-b border-gray-200">
-      <div className="mx-auto max-w-xl sm:max-w-2xl lg:max-w-3xl px-4 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <span aria-hidden className="inline-block h-3 w-3 rounded-full bg-blue-500" />
-          <span className="text-sm font-medium">Neuroscope</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={onSave}
-            className="rounded-lg border px-2 py-1 text-xs hover:bg-gray-50"
-            title="Fortschritt lokal speichern"
-          >
-            Speichern
-          </button>
-          <button
-            onClick={onRequestReset}
-            className="rounded-lg border px-2 py-1 text-xs hover:bg-gray-50"
-            title="Neu starten"
-          >
-            Neu starten
-          </button>
-        </div>
-      </div>
-    </header>
-  );
-}
-function Footer() {
-  return (
-    <footer className="fixed bottom-0 inset-x-0 border-t border-gray-200 bg-white/80 backdrop-blur z-10">
-      <div className="mx-auto max-w-xl sm:max-w-2xl lg:max-w-3xl px-4 py-2 text-center text-xs text-gray-500">
-        Orientierung & Selbstreflexion. Keine klinische Diagnose. In Notfällen 112.
-      </div>
-    </footer>
-  );
-}
-function Card({ className = "", children }) {
-  return (
-    <div className={`rounded-2xl bg-white shadow-lg ring-1 ring-black/5 p-4 sm:p-5 ${className}`}>
-      {children}
-    </div>
-  );
-}
-function PrimaryButton({ onClick, children, className = "" }) {
-  return (
-    <button
-      onClick={onClick}
-      className={`btn-gradient w-full rounded-xl px-4 py-3 text-white font-semibold shadow-sm focus:outline-none focus-visible:ring focus-visible:ring-blue-300 active:scale-[0.99] transition ${className}`}
-    >
-      {children}
-    </button>
-  );
-}
-function OutlineButton({ onClick, children, disabled, className = "" }) {
-  return (
-    <button
-      onClick={onClick}
-      disabled={disabled}
-      className={`rounded-xl border px-4 py-2 text-sm font-medium disabled:opacity-50 hover:bg-gray-50 focus:outline-none focus-visible:ring focus-visible:ring-blue-300 ${className}`}
-    >
-      {children}
-    </button>
-  );
-}
-function Progress({ percent, label }) {
-  return (
-    <div aria-live="polite">
-      <div className="flex justify-between">
-        <p className="text-sm font-medium">{label}</p>
-        <p className="text-xs text-gray-500"><span className="font-semibold">{percent}%</span></p>
-      </div>
-      <div
-        className="mt-2 h-2 w-full rounded-full bg-gray-200"
-        role="progressbar"
-        aria-valuemin={0}
-        aria-valuemax={100}
-        aria-valuenow={percent}
-      >
-        <div
-          className="h-2 rounded-full bg-blue-600 transition-[width] duration-300"
-          style={{ width: `${percent}%` }}
-        />
-      </div>
-    </div>
-  );
-}
-
-/* ===== Background FX (OpenAI-like moving blur) ===== */
-function BackgroundFX(){
-  return (
-    <div className="fx-wrap" aria-hidden="true">
-      <span className="fx-blur fx-a"></span>
-      <span className="fx-blur fx-b"></span>
-      <span className="fx-blur fx-c"></span>
-    </div>
-  );
-}
-
-/* ============ minimal intro (clean) ============ */
-function Landing({ onStart }) {
-  return (
-    <div className="min-h-[76vh] grid place-items-center px-4">
-      <div className="max-w-xl sm:max-w-2xl lg:max-w-3xl w-full">
-        <div className="hero-card rounded-3xl p-6 sm:p-8">
-          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-semibold tracking-tight">
-            Neuroscope
-          </h1>
-          <p className="mt-3 text-gray-700 text-base sm:text-lg leading-relaxed">
-            Eine traumasensible, ICD-11-orientierte Reise zu deiner Psyche – klar,
-            respektvoll, in deinem Tempo.
-          </p>
-          <div className="mt-6 max-w-sm">
-            <PrimaryButton onClick={onStart}>Jetzt starten</PrimaryButton>
-          </div>
-          <p className="mt-3 text-xs text-gray-500">
-            Deine Antworten bleiben lokal auf deinem Gerät, bis du sie bewusst exportierst.
-          </p>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* ============ app ============ */
 export default function App() {
+  const [loading, setLoading] = useState(true);
+
+  // Ladebildschirm bewusst etwas länger anzeigen lassen (3 Sekunden)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setLoading(false);
+    }, 3000);
+    return () => clearTimeout(timer);
+  }, []);
+
+  // UI-States und Refs
   const [started, setStarted] = useState(false);
   const [idx, setIdx] = useState(0);
   const [ans, setAns] = useState({});
   const [safety, setSafety] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
 
-  // Feedback/Toast + SR
-  const [announce, setAnnounce] = useState(""); // SR
-  const [toast, setToast] = useState(null);     // sichtbar
+  const [announce, setAnnounce] = useState(""); // Screen reader
+  const [toast, setToast] = useState(null);     // Sichtbares Toast
   const focusRef = useRef(null);
 
-  // Hydration-Flag: erst lesen, dann speichern erlauben
   const [hydrated, setHydrated] = useState(false);
 
   /* ---- DM Sans einbinden (ohne index.html) ---- */
@@ -249,7 +136,6 @@ export default function App() {
   /* ---------- RESTORE ON MOUNT (ohne Überschreiben) ---------- */
   useEffect(() => {
     try {
-      // Migration vom alten Key
       const rawNew = localStorage.getItem(STORAGE_KEY);
       const rawOld = rawNew ?? localStorage.getItem("psyche_state"); // fallback
       const saved = rawOld ? JSON.parse(rawOld) : null;
@@ -265,7 +151,6 @@ export default function App() {
       setHydrated(true); // erst danach dürfen Autosaves laufen
     }
   }, []);
-  /* ----------------------------------------------------------- */
 
   /* ---------- AUTOSAVE (nur nach Hydration & bei Fortschritt) ---------- */
   const hasProgress = started || idx > 0 || Object.keys(ans).length > 0;
@@ -283,7 +168,6 @@ export default function App() {
     }, 250);
     return () => clearTimeout(t);
   }, [hydrated, hasProgress, started, idx, ans]);
-  /* --------------------------------------------------------------------- */
 
   /* ---------- SAVE ON UNLOAD (zusätzliche Sicherheit) ---------- */
   useEffect(() => {
@@ -295,7 +179,6 @@ export default function App() {
     window.addEventListener("beforeunload", handler);
     return () => window.removeEventListener("beforeunload", handler);
   }, [started, idx, ans]);
-  /* ---------------------------------------------------------------- */
 
   const current = BANK[idx];
   const total = useMemo(() => answerableCount(BANK), []);
@@ -372,7 +255,12 @@ export default function App() {
 
   const report = useMemo(() => buildReport(ans), [ans]);
 
-  // landing (clean)
+  // Ladebildschirm anzeigen solange "loading"
+  if (loading) {
+    return <LoadingScreen onFinish={() => setLoading(false)} />;
+  }
+
+  // Landing / Startseite, wenn noch nicht gestartet
   if (!started) {
     return (
       <div className="min-h-dvh app-gradient text-gray-900 relative">
@@ -383,20 +271,18 @@ export default function App() {
         </main>
         <Footer />
 
-        {/* SR live region global */}
         <div className="sr-only" aria-live="polite">{announce}</div>
-        {/* Visible toast */}
         {toast && <div className="toast">{toast.msg}</div>}
       </div>
     );
   }
 
+  // Haupt-App (Testmodule, Summary etc.)
   return (
     <div className="min-h-dvh app-gradient text-gray-900 relative">
       <BackgroundFX />
       <Header onSave={saveNow} onRequestReset={() => setConfirmReset(true)} />
 
-      {/* Mobile-first nav with icons + quick picker */}
       <Nav
         modules={BANK.filter((m) => m.id !== "intro" && m.id !== "summary")}
         currentId={current?.id}
@@ -416,7 +302,6 @@ export default function App() {
         <Progress percent={progress} label="Gesamtfortschritt" />
         <div className="sr-only" aria-live="polite">{announce}</div>
 
-        {/* Info/Intro stepper AFTER start if present */}
         {(current?.kind === "info" || current?.kind === "intro") && (
           <Card className="mt-4">
             <h2 className="text-xl font-semibold">{current.title}</h2>
@@ -434,7 +319,6 @@ export default function App() {
           </Card>
         )}
 
-        {/* Scales (accessible radios styled as chips) */}
         {current?.kind === "scale" && (
           <ScaleModule
             module={current}
@@ -446,7 +330,6 @@ export default function App() {
           />
         )}
 
-        {/* yes/no */}
         {current?.kind === "yesno" && (
           <YesNoModule
             module={current}
@@ -458,7 +341,6 @@ export default function App() {
           />
         )}
 
-        {/* Interactive cognitive tests */}
         {current?.kind === "interactive" && current.id === "tol" && (
           <Card className="mt-4">
             <TowerOfLondon
@@ -507,7 +389,6 @@ export default function App() {
           </Card>
         )}
 
-        {/* Summary */}
         {current?.kind === "summary" && (
           <SummaryCard
             report={report}
@@ -521,11 +402,15 @@ export default function App() {
 
       {/* safety */}
       {safety && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" role="dialog" aria-modal="true">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+          role="dialog"
+          aria-modal="true"
+        >
           <Card className="max-w-md w-full">
             <h3 className="text-lg font-semibold">Danke für dein Vertrauen</h3>
             <p className="mt-2 text-sm">
-              Deine Angabe zeigt, dass es dir gerade schwer geht. Du bist nicht allein.
+              Deine Angabe zeigt, dass es dir gerade nicht gut geht. Du bist nicht allein.
               Wenn akute Gefahr besteht: Notruf 112. Du kannst fortfahren – bitte achte gut auf dich.
             </p>
             <div className="mt-4 flex gap-2">
@@ -545,7 +430,11 @@ export default function App() {
 
       {/* reset confirm */}
       {confirmReset && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" role="dialog" aria-modal="true">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+          role="dialog"
+          aria-modal="true"
+        >
           <Card className="max-w-md w-full">
             <h3 className="text-lg font-semibold">Alles zurücksetzen?</h3>
             <p className="mt-2 text-sm">Deine Antworten und dein Fortschritt werden gelöscht. Bist du sicher?</p>
@@ -563,7 +452,11 @@ export default function App() {
       )}
 
       {/* Visible toast (global) */}
-      {toast && <div className="toast" role="status">{toast.msg}</div>}
+      {toast && (
+        <div className="toast" role="status" aria-live="polite">
+          {toast.msg}
+        </div>
+	)}
     </div>
   );
 }
@@ -695,6 +588,7 @@ function bandIdx(v, cut) {
   while (i < cut.length && v >= cut[i]) i++;
   return i; // 0..n
 }
+
 function labelBand(i, higherIsBetter = false) {
   const L = higherIsBetter
     ? ["sehr niedrig", "niedrig", "moderat", "gut", "sehr gut"]
@@ -739,132 +633,134 @@ function buildReport(a) {
   };
 }
 
-function SummaryCard({ report, onRestart, onSave }) {
-  const blocks = [];
-  const add = (title, desc, color="blue") => blocks.push({title,desc,color});
-
-  // personalised hints per domain
-  const d = report;
-
-  const mk = (name, obj) => {
-    const txt = obj.higher ? labelBand(obj.band, true) : labelBand(obj.band, false);
-    return `${name}: ${txt}.`;
-  };
-  add("Emotionen", [
-    mk("Stimmung", d.mood),
-    mk("Anspannung/Angst", d.anx),
-    `Trauma-Hinweise: ${labelBand(d.ptsd.band)}.`,
-    `Zwänge/Impulse: ${labelBand(d.ocd.band)}.`
-  ].join(" "), "indigo");
-
-  add("Selbst & Beziehungen", [
-    `Selbstbild: ${labelBand(d.self.band, true)} (höher = besser).`,
-    `Beziehungen: ${labelBand(d.rel.band, true)} (höher = besser).`
-  ].join(" "), "emerald");
-
-  add("Körper & Denken", [
-    `Körperlicher Stress: ${labelBand(d.som.band)}.`,
-    `Kognitive Muster: ${labelBand(d.cog.band)}.`
-  ].join(" "), "amber");
-
-  add("Ressourcen & Alltag", [
-    `Resilienz: ${labelBand(d.res.band, true)} (höher = besser).`,
-    d.func.raw == null ? "Funktion: n/a." : `Funktionieren: ${d.func.raw > 0.66 ? "deutlich" : d.func.raw > 0.33 ? "mäßig" : "gering"}e Einschränkungen.`
-  ].join(" "), "sky");
-
-  // cognitive tasks qualitative text
-  const taskTxt = [];
-  if (d.tasks.tolEff != null) taskTxt.push(`Planung (ToL): ${d.tasks.tolEff >= 0.8 ? "effizient" : d.tasks.tolEff >= 0.5 ? "mittel" : "ausbaufähig"}.`);
-  if (d.tasks.nbackAcc != null) taskTxt.push(`Arbeitsgedächtnis (N-Back): ${Math.round((d.tasks.nbackAcc||0)*100)}% Genauigkeit.`);
-  if (d.tasks.stroopAcc != null) taskTxt.push(`Inhibition (Stroop): ${Math.round((d.tasks.stroopAcc||0)*100)}% korrekt.`);
-  if (d.tasks.trailsMs != null) taskTxt.push(`Aufmerksamkeit/Tempo (Trails A): ${Math.round(d.tasks.trailsMs/1000)}s.`);
-
-  if (taskTxt.length) add("Kognitive Leistung", taskTxt.join(" "), "violet");
-
-  // accessible bars (no chart deps)
-  const bars = [
-    ["Stimmung", d.mood.raw, 27],
-    ["Angst", d.anx.raw, 21],
-    ["Trauma", d.ptsd.raw, 16],
-    ["Zwänge", d.ocd.raw, 8],
-    ["Selbst (↑gut)", d.self.raw, 16, true],
-    ["Beziehungen (↑gut)", d.rel.raw, 16, true],
-    ["Körperstress", d.som.raw, 8],
-    ["Kognitionen", d.cog.raw, 8],
-    ["Resilienz (↑gut)", d.res.raw, 20, true],
-  ];
-
-  // Tailwind-Purge-sichere Farben
-  const COLOR_MAP = {
-    indigo: "bg-indigo-50 border-indigo-200",
-    emerald: "bg-emerald-50 border-emerald-200",
-    amber: "bg-amber-50 border-amber-200",
-    sky: "bg-sky-50 border-sky-200",
-    violet: "bg-violet-50 border-violet-200",
-    blue: "bg-blue-50 border-blue-200",
-  };
-
+/* ============ UI atoms ============ */
+function Header({ onSave, onRequestReset }) {
   return (
-    <Card className="mt-4 animate-fade-in">
-      <h2 className="text-2xl font-bold">Zusammenfassung</h2>
-      <p className="mt-1 text-sm text-gray-600">
-        Individuelle Orientierung – kein Ersatz für eine klinische Diagnose. Teile die PDF bei Bedarf mit Fachpersonen.
-      </p>
-
-      {/* bars */}
-      <div className="mt-4 space-y-3" aria-label="Profilübersicht">
-        {bars.map(([label, raw, max, higherIsBetter=false]) => {
-          const pct = Math.max(0, Math.min(100, Math.round(((raw ?? 0) / max) * 100)));
-          return (
-            <div key={label}>
-              <div className="flex justify-between text-xs">
-                <span>{label}</span>
-                <span>{raw ?? 0}/{max}</span>
-              </div>
-              <div className="mt-1 h-2 rounded-full bg-gray-200">
-                <div
-                  className={`h-2 rounded-full ${higherIsBetter ? "bg-emerald-600" : "bg-blue-600"}`}
-                  style={{ width: `${pct}%` }}
-                />
-              </div>
-            </div>
-          );
-        })}
+    <header className="sticky top-0 z-30 bg-white/80 backdrop-blur border-b border-gray-200">
+      <div className="mx-auto max-w-xl sm:max-w-2xl lg:max-w-3xl px-4 py-3 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <span aria-hidden className="inline-block h-3 w-3 rounded-full bg-blue-500" />
+          <span className="text-sm font-medium">Neuroscope</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={onSave}
+            className="rounded-lg border px-2 py-1 text-xs hover:bg-gray-50"
+            title="Fortschritt lokal speichern"
+          >
+            Speichern
+          </button>
+          <button
+            onClick={onRequestReset}
+            className="rounded-lg border px-2 py-1 text-xs hover:bg-gray-50"
+            title="Neu starten"
+          >
+            Neu starten
+          </button>
+        </div>
       </div>
+    </header>
+  );
+}
+function Footer() {
+  return (
+    <footer className="fixed bottom-0 inset-x-0 border-t border-gray-200 bg-white/80 backdrop-blur z-10">
+      <div className="mx-auto max-w-xl sm:max-w-2xl lg:max-w-3xl px-4 py-2 text-center text-xs text-gray-500">
+        Orientierung & Selbstreflexion. Keine klinische Diagnose. In Notfällen{" "}
+        <a
+          href="tel:112"
+          className="text-blue-600 underline hover:text-blue-800"
+          aria-label="Notrufnummer 112 anrufen"
+        >
+          112
+        </a>
+        .
+      </div>
+    </footer>
+  );}
+function Card({ className = "", children }) {
+  return (
+    <div className={`rounded-2xl bg-white shadow-lg ring-1 ring-black/5 p-4 sm:p-5 ${className}`}>
+      {children}
+    </div>
+  );
+}
+function PrimaryButton({ onClick, children, className = "" }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`btn-gradient w-full rounded-xl px-4 py-3 text-white font-semibold shadow-sm focus:outline-none focus-visible:ring focus-visible:ring-blue-300 active:scale-[0.99] transition ${className}`}
+    >
+      {children}
+    </button>
+  );
+}
+function OutlineButton({ onClick, children, disabled, className = "" }) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className={`rounded-xl border px-4 py-2 text-sm font-medium disabled:opacity-50 hover:bg-gray-50 focus:outline-none focus-visible:ring focus-visible:ring-blue-300 ${className}`}
+    >
+      {children}
+    </button>
+  );
+}
+function Progress({ percent, label }) {
+  return (
+    <div aria-live="polite">
+      <div className="flex justify-between">
+        <p className="text-sm font-medium">{label}</p>
+        <p className="text-xs text-gray-500"><span className="font-semibold">{percent}%</span></p>
+      </div>
+      <div
+        className="mt-2 h-2 w-full rounded-full bg-gray-200"
+        role="progressbar"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={percent}
+      >
+        <div
+          className="h-2 rounded-full bg-blue-600 transition-[width] duration-300"
+          style={{ width: `${percent}%` }}
+        />
+      </div>
+    </div>
+  );
+}
 
-      {/* personalised text blocks */}
-      <div className="mt-6 space-y-3">
-        {blocks.map((b, i) => {
-          const cls = COLOR_MAP[b.color] || "bg-gray-50 border-gray-200";
-          return (
-            <div key={i} className={`rounded-xl ${cls} p-3 text-sm`}>
-              <p className="leading-relaxed">{b.desc}</p>
-            </div>
-          );
-        })}
-        {d.safety.risk && (
-          <div className="rounded-xl bg-amber-50 border border-amber-300 p-3 text-sm">
-            <strong>Wichtig:</strong> Du hast belastende Gedanken angegeben. Hol dir bitte Unterstützung.
-            In akuten Situationen: 112. Krisenhilfe: telefonseelsorge.de
+/* ===== Background FX (OpenAI-like moving blur) ===== */
+function BackgroundFX(){
+  return (
+    <div className="fx-wrap" aria-hidden="true">
+      <span className="fx-blur fx-a"></span>
+      <span className="fx-blur fx-b"></span>
+      <span className="fx-blur fx-c"></span>
+    </div>
+  );
+}
+
+/* ============ minimal intro (clean) ============ */
+function Landing({ onStart }) {
+  return (
+    <div className="min-h-[76vh] grid place-items-center px-4">
+      <div className="max-w-xl sm:max-w-2xl lg:max-w-3xl w-full">
+        <div className="hero-card rounded-3xl p-6 sm:p-8">
+          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-semibold tracking-tight">
+            Neuroscope
+          </h1>
+          <p className="mt-3 text-gray-700 text-base sm:text-lg leading-relaxed">
+            Eine traumasensible, ICD-11-orientierte Reise zu deiner Psyche – klar,
+            respektvoll, in deinem Tempo.
+          </p>
+          <div className="mt-6 max-w-sm">
+            <PrimaryButton onClick={onStart}>Jetzt starten</PrimaryButton>
           </div>
-        )}
+          <p className="mt-3 text-xs text-gray-500">
+            Deine Daten werden nur auf deinem Gerät gespeichert und nicht automatisch weitergegeben.
+          </p>
+        </div>
       </div>
-
-      <div className="mt-5 flex flex-wrap gap-3">
-        <OutlineButton onClick={onSave}>Speichern</OutlineButton>
-        <button
-          onClick={() => window.print()}
-          className="rounded-xl px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
-        >
-          Als PDF speichern
-        </button>
-        <button
-          onClick={onRestart}
-          className="rounded-xl px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700"
-        >
-          Neu starten
-        </button>
-      </div>
-    </Card>
+    </div>
   );
 }
