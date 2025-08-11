@@ -253,7 +253,8 @@ export default function App() {
     setTimeout(() => window.scrollTo({ top: 0, behavior: "smooth" }), 0);
   }
 
-  const report = useMemo(() => buildReport(ans), [ans]);
+  import { buildReportUpgraded } from "./lib/report.validated";
+  const report = useMemo(() => buildReportUpgraded(ans, progress), [ans, progress]);
 
   // Ladebildschirm anzeigen solange "loading"
   if (loading) {
