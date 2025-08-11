@@ -56,6 +56,8 @@ export function buildReportUpgraded(ans, progressPct = 0) {
     mood,
     anx,
     ptsd,
+debugValidated: true,     // ✅ nur in neuer Logik vorhanden
+ptsdTrueRaw: ptsdRaw,     // ✅ echter PCL-5-Score (0..80), nur hier gesetzt
     ocd:  o(null, 1),
     self: o(null, 2),
     rel:  o(null, 2),
