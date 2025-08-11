@@ -78,97 +78,80 @@ function icd11Assessment(report) {
   return conditions;
 }
 
+/* ---------- kleine Hilfs-Komponenten ---------- */
+
+function Pill({ children, tone = "gray" }) {
+  const toneMap = {
+    gray: "bg-gray-100 text-gray-700 border-gray-200",
+    red: "bg-red-50 text-red-700 border-red-200",
+    orange: "bg-amber-50 text-amber-700 border-amber-200",
+    green: "bg-emerald-50 text-emerald-700 border-emerald-200",
+    blue: "bg-blue-50 text-blue-700 border-blue-200",
+  };
+  return (
+    <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-medium ${toneMap[tone]}`}>
+      {children}
+    </span>
+  );
+}
+
+function Section({ title, children, defaultOpen = false }) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div className="rounded-xl border border-gray-200 bg-white">
+      <button
+        type="button"
+        onClick={() => setOpen(v => !v)}
+        className="w-full flex items-center justify-between px-4 py-3 text-left"
+      >
+        <span className="font-semibold">{title}</span>
+        <span className="text-gray-500">{open ? "▴" : "▾"}</span>
+      </button>
+      {open && <div className="px-4 pb-4">{children}</div>}
+    </div>
+  );
+}
+
+function Bar({ label, raw, max, higherIsBetter }) {
+  const pct = Math.max(0, Math.min(100, Math.round(((raw ?? 0) / max) * 100)));
+  return (
+    <div className="p-3 rounded-lg border border-gray-200 bg-white">
+      <div className="flex justify-between text-sm font-medium mb-1">
+        <span>{label}</span>
+        <span>{raw ?? 0}/{max} ({pct}%)</span>
+      </div>
+      <div className="w-full h-3.5 bg-gray-100 rounded-full overflow-hidden">
+        <div
+          className={`h-3.5 rounded-full transition-all duration-500 ${higherIsBetter ? "bg-emerald-600" : "bg-blue-600"}`}
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+    </div>
+  );
+}
+
+function labelBand(i, higherIsBetter = false) {
+  const L = higherIsBetter
+    ? ["sehr niedrig", "niedrig", "moderat", "gut", "sehr gut"]
+    : ["niedrig", "leicht", "mäßig", "deutlich", "hoch"];
+  return L[Math.min(i ?? 0, L.length - 1)];
+}
+
+/* ---------- Hauptkomponente ---------- */
+
 export default function SummaryCard({ report, onRestart, onSave }) {
-  const blocks = [];
-  const add = (title, desc, color = "blue") => blocks.push({ title, desc, color });
+  // Kernaussagen (kompakte Chips)
+  const corePills = [
+    ["Stimmung", labelBand(report.mood.band, false)],
+    ["Angst", labelBand(report.anx.band, false)],
+    ["Trauma", labelBand(report.ptsd.band, false)],
+    ["Zwänge/Impulse", labelBand(report.ocd.band, false)],
+  ];
 
-  // Persönliche Einschätzungen mit den passenden Beschreibungen
-  add(
-    "Emotionen",
-    [
-      `Stimmung: ${labelBand(report.mood.band, false)}.`,
-      `Angst: ${labelBand(report.anx.band, false)}.`,
-      `Trauma: ${labelBand(report.ptsd.band, false)}.`,
-      `Zwänge/Impulse: ${labelBand(report.ocd.band, false)}.`,
-    ].join(" "),
-    "indigo"
-  );
-
-  add(
-    "Selbst & Beziehungen",
-    [
-      `Selbstbild: ${labelBand(report.self.band, true)} (höher = besser).`,
-      `Beziehungen: ${labelBand(report.rel.band, true)} (höher = besser).`,
-    ].join(" "),
-    "emerald"
-  );
-
-  add(
-    "Körper & Denken",
-    [
-      `Körperlicher Stress: ${labelBand(report.som.band, false)}.`,
-      `Kognitive Muster: ${labelBand(report.cog.band, false)}.`,
-    ].join(" "),
-    "amber"
-  );
-
-  add(
-    "Ressourcen & Alltag",
-    [
-      `Resilienz: ${labelBand(report.res.band, true)} (höher = besser).`,
-      report.func.raw == null
-        ? "Funktion: n/a."
-        : `Funktionieren: ${
-            report.func.raw > 0.66
-              ? "deutlich"
-              : report.func.raw > 0.33
-              ? "mäßig"
-              : "gering"
-          }e Einschränkungen.`,
-    ].join(" "),
-    "sky"
-  );
-
-  add(
-    "Kognitive Leistung",
-    [
-      report.tasks.tolEff != null
-        ? `Planung (ToL): ${
-            report.tasks.tolEff >= 0.8
-              ? "effizient"
-              : report.tasks.tolEff >= 0.5
-              ? "mittel"
-              : "ausbaufähig"
-          }.`
-        : null,
-      report.tasks.nbackAcc != null
-        ? `Arbeitsgedächtnis (N-Back): ${Math.round(
-            (report.tasks.nbackAcc || 0) * 100
-          )}% Genauigkeit.`
-        : null,
-      report.tasks.stroopAcc != null
-        ? `Inhibition (Stroop): ${Math.round(
-            (report.tasks.stroopAcc || 0) * 100
-          )}% korrekt.`
-        : null,
-      report.tasks.trailsMs != null
-        ? `Aufmerksamkeit/Tempo (Trails A): ${Math.round(
-            report.tasks.trailsMs / 1000
-          )}s.`
-        : null,
-    ]
-      .filter(Boolean)
-      .join(" "),
-    "violet"
-  );
-
-  // Trauma-sensitive Texte
   const traumaTexts = traumaSensitiveText(report);
-
-  // ICD-11 Einschätzung
   const icdConditions = icd11Assessment(report);
 
-  // Balkenanzeige für den Report
+  // Balken-Definition (unverändert inhaltlich)
   const bars = [
     ["Stimmung", report.mood.raw, 27],
     ["Angst", report.anx.raw, 21],
@@ -181,103 +164,172 @@ export default function SummaryCard({ report, onRestart, onSave }) {
     ["Resilienz (↑gut)", report.res.raw, 20, true],
   ];
 
-  function labelBand(i, higherIsBetter = false) {
-    const L = higherIsBetter
-      ? ["sehr niedrig", "niedrig", "moderat", "gut", "sehr gut"]
-      : ["niedrig", "leicht", "mäßig", "deutlich", "hoch"];
-    return L[Math.min(i, L.length - 1)];
-  }
+  // Farbton für Trauma-Hinweis (seriös, ruhig)
+  const [showAllTraumaNotes, setShowAllTraumaNotes] = useState(false);
+  const primaryTraumaNote = traumaTexts[0];
+  const moreTraumaNotes = traumaTexts.slice(1);
 
   return (
     <div className="mt-4 animate-fade-in max-w-4xl mx-auto">
-      <h2 className="text-3xl font-bold mb-4">Zusammenfassung & Dashboard</h2>
-
-      <p className="mb-3 text-gray-600">
-        Individuelle Orientierung – kein Ersatz für eine klinische Diagnose. Bitte beachte, dass mindestens 80% des Tests ausgefüllt sein sollten.
-      </p>
-
-      {/* Fortschritt */}
-      <p className="mb-6 font-semibold text-gray-700">
-        Testfortschritt: {report.progress}%
-      </p>
-
-      {/* Balken-Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-8">
-        {bars.map(([label, raw, max, higher]) => {
-          const pct = Math.max(
-            0,
-            Math.min(100, Math.round(((raw ?? 0) / max) * 100))
-          );
-          return (
-            <div
-              key={label}
-              className={`p-4 rounded-lg border ${
-                higher ? "border-emerald-400 bg-emerald-50" : "border-blue-400 bg-blue-50"
-              }`}
-            >
-              <div className="flex justify-between font-semibold mb-1">
-                <span>{label}</span>
-                <span>
-                  {raw ?? 0}/{max} ({pct}%)
-                </span>
-              </div>
-              <div className="w-full h-4 bg-gray-200 rounded-full overflow-hidden">
-                <div
-                  className={`h-4 rounded-full transition-all duration-500 ease-in-out ${
-                    higher ? "bg-emerald-600" : "bg-blue-600"
-                  }`}
-                  style={{ width: `${pct}%` }}
-                ></div>
-              </div>
-            </div>
-          );
-        })}
+      {/* Kopf */}
+      <div className="mb-5">
+        <h2 className="text-2xl sm:text-3xl font-bold">Zusammenfassung &amp; Dashboard</h2>
+        <p className="mt-2 text-sm text-gray-600">
+          Individuelle Orientierung – kein Ersatz für eine klinische Diagnose. Bitte beachte, dass mindestens 80% des Tests ausgefüllt sein sollten.
+        </p>
       </div>
 
-      {/* Trauma-sensitive Hinweise */}
-      <div className="space-y-4 mb-8">
-        {traumaTexts.map((text, idx) => (
-          <div
-            key={idx}
-            className="p-4 bg-amber-50 border border-amber-300 rounded-lg text-sm"
-          >
-            {text}
-          </div>
-        ))}
-      </div>
-
-      {/* Persönliche Textblöcke */}
-      <div className="space-y-3 mb-8">
-        {blocks.map((b, i) => {
-          const cls = COLOR_MAP[b.color] || "bg-gray-50 border-gray-200";
-          return (
-            <div key={i} className={`rounded-xl ${cls} p-4 text-sm`}>
-              <h3 className="font-semibold mb-1">{b.title}</h3>
-              <p>{b.desc}</p>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* ICD-11 Einschätzung */}
-      <div className="mb-8 p-4 rounded-lg border border-gray-300 bg-gray-50">
-        <h3 className="text-xl font-semibold mb-2">Mögliche ICD-11-Erkrankungen</h3>
-        <ul className="list-disc list-inside text-sm text-gray-700">
-          {icdConditions.map((cond, idx) => (
-            <li key={idx}>{cond}</li>
+      {/* Fortschritt + Kern-Chips */}
+      <div className="flex flex-col gap-3 mb-6">
+        <div className="font-semibold text-gray-700">Testfortschritt: {report.progress}%</div>
+        <div className="flex flex-wrap gap-2">
+          {corePills.map(([k, v]) => (
+            <Pill key={k} tone="blue">
+              {k}: {v}
+            </Pill>
           ))}
-        </ul>
+        </div>
       </div>
 
-      {/* Abschließender Hinweis */}
-      <div className="mb-8 p-4 rounded-lg border border-blue-300 bg-blue-50 text-sm text-blue-900">
+      {/* Gesamtüberblick (Balken kompakt) */}
+      <Section title="Überblick (Skalen)" defaultOpen>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {bars.map(([label, raw, max, higher]) => (
+            <Bar key={label} label={label} raw={raw} max={max} higherIsBetter={!!higher} />
+          ))}
+        </div>
+      </Section>
+
+      {/* Trauma-sensible Hinweise (kompakt + expandierbar) */}
+      <div className="mt-6 rounded-xl border border-amber-300 bg-amber-50 p-4">
+        <div className="text-sm">
+          <div className="font-semibold mb-1">Hinweise &amp; Selbstfürsorge</div>
+          <p className="text-amber-900">{primaryTraumaNote}</p>
+          {moreTraumaNotes.length > 0 && (
+            <>
+              {!showAllTraumaNotes && (
+                <button
+                  className="mt-2 text-xs underline text-amber-800"
+                  onClick={() => setShowAllTraumaNotes(true)}
+                >
+                  Weitere Hinweise anzeigen
+                </button>
+              )}
+              {showAllTraumaNotes && (
+                <ul className="mt-2 list-disc list-inside space-y-1 text-amber-900">
+                  {moreTraumaNotes.map((t, i) => (
+                    <li key={i} className="text-sm">{t}</li>
+                  ))}
+                </ul>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* Thematische Details in Akkordeons (alle bisherigen Inhalte bleiben) */}
+      <div className="mt-6 space-y-4">
+        <Section title="Emotionen">
+          <div className={`rounded-xl ${COLOR_MAP.indigo} p-4 text-sm`}>
+            <h3 className="font-semibold mb-1">Emotionen</h3>
+            <p>
+              Stimmung: {labelBand(report.mood.band, false)}.{" "}
+              Angst: {labelBand(report.anx.band, false)}.{" "}
+              Trauma: {labelBand(report.ptsd.band, false)}.{" "}
+              Zwänge/Impulse: {labelBand(report.ocd.band, false)}.
+            </p>
+          </div>
+        </Section>
+
+        <Section title="Selbst & Beziehungen">
+          <div className={`rounded-xl ${COLOR_MAP.emerald} p-4 text-sm`}>
+            <h3 className="font-semibold mb-1">Selbst & Beziehungen</h3>
+            <p>
+              Selbstbild: {labelBand(report.self.band, true)} (höher = besser).{" "}
+              Beziehungen: {labelBand(report.rel.band, true)} (höher = besser).
+            </p>
+          </div>
+        </Section>
+
+        <Section title="Körper & Denken">
+          <div className={`rounded-xl ${COLOR_MAP.amber} p-4 text-sm`}>
+            <h3 className="font-semibold mb-1">Körper & Denken</h3>
+            <p>
+              Körperlicher Stress: {labelBand(report.som.band, false)}.{" "}
+              Kognitive Muster: {labelBand(report.cog.band, false)}.
+            </p>
+          </div>
+        </Section>
+
+        <Section title="Ressourcen & Alltag">
+          <div className={`rounded-xl ${COLOR_MAP.sky} p-4 text-sm`}>
+            <h3 className="font-semibold mb-1">Ressourcen & Alltag</h3>
+            <p>
+              Resilienz: {labelBand(report.res.band, true)} (höher = besser).{" "}
+              {report.func.raw == null
+                ? "Funktion: n/a."
+                : `Funktionieren: ${
+                    report.func.raw > 0.66
+                      ? "deutlich"
+                      : report.func.raw > 0.33
+                      ? "mäßig"
+                      : "gering"
+                  }e Einschränkungen.`}
+            </p>
+          </div>
+        </Section>
+
+        <Section title="Kognitive Leistung">
+          <div className={`rounded-xl ${COLOR_MAP.violet} p-4 text-sm`}>
+            <h3 className="font-semibold mb-1">Kognitive Leistung</h3>
+            <p className="space-y-1">
+              {report.tasks.tolEff != null && (
+                <span className="block">
+                  Planung (ToL): {report.tasks.tolEff >= 0.8 ? "effizient" : report.tasks.tolEff >= 0.5 ? "mittel" : "ausbaufähig"}.
+                </span>
+              )}
+              {report.tasks.nbackAcc != null && (
+                <span className="block">
+                  Arbeitsgedächtnis (N-Back): {Math.round((report.tasks.nbackAcc || 0) * 100)}% Genauigkeit.
+                </span>
+              )}
+              {report.tasks.stroopAcc != null && (
+                <span className="block">
+                  Inhibition (Stroop): {Math.round((report.tasks.stroopAcc || 0) * 100)}% korrekt.
+                </span>
+              )}
+              {report.tasks.trailsMs != null && (
+                <span className="block">
+                  Aufmerksamkeit/Tempo (Trails A): {Math.round((report.tasks.trailsMs || 0) / 1000)}s.
+                </span>
+              )}
+            </p>
+          </div>
+        </Section>
+
+        <Section title="Mögliche ICD-11-Erkrankungen (Screening)">
+          <div className="p-4 rounded-lg border border-gray-200 bg-white">
+            <ul className="list-disc list-inside text-sm text-gray-700">
+              {icdConditions.map((cond, idx) => (
+                <li key={idx}>{cond}</li>
+              ))}
+            </ul>
+            <p className="mt-3 text-xs text-gray-500">
+              Hinweis: Screening-Hinweis – ersetzt keine fachliche Diagnose.
+            </p>
+          </div>
+        </Section>
+      </div>
+
+      {/* Abschließender Hinweis (dein bestehender Text, seriöser gerahmt) */}
+      <div className="mt-6 p-4 rounded-lg border border-blue-200 bg-blue-50 text-sm text-blue-900">
         <p>
           Hinweis: Das heruntergeladene PDF kann für eine vertiefte Analyse bei ChatGPT hochgeladen werden. Dort kann eine weiterführende Einschätzung und mögliche Hilfestellung angeboten werden.
         </p>
       </div>
 
       {/* Tipps & Unterstützung */}
-      <div className="mb-8 p-4 rounded-lg bg-indigo-50 text-indigo-900">
+      <div className="mt-6 p-4 rounded-lg bg-indigo-50 text-indigo-900">
         <h3 className="font-semibold mb-2">Tipps & Unterstützung</h3>
         <p>
           Wenn du Unterstützung suchst, findest du hier hilfreiche Ressourcen:{" "}
@@ -286,12 +338,13 @@ export default function SummaryCard({ report, onRestart, onSave }) {
           </a>,{" "}
           <a href="https://www.psychiatrie.de/" target="_blank" rel="noopener noreferrer" className="underline">
             Psychiatrische Hilfen
-          </a> und weitere.
+          </a>{" "}
+          und weitere.
         </p>
       </div>
 
       {/* Aktionen */}
-      <div className="flex flex-wrap gap-3">
+      <div className="mt-6 flex flex-wrap gap-3">
         <button
           onClick={onSave}
           className="px-5 py-2 rounded-xl bg-blue-600 text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-400"
@@ -315,13 +368,6 @@ export default function SummaryCard({ report, onRestart, onSave }) {
       <p className="mt-2 text-xs text-gray-500">
         Hinweis: Deine Daten werden lokal auf deinem Gerät gespeichert. Bitte behandele die exportierte Datei vertraulich.
       </p>
-
-{report.debugValidated && (
-  <div className="mt-6 text-center text-[11px] text-green-600">
-    ✅ Validated scoring is LIVE • PCL-5 true raw: {report.ptsdTrueRaw ?? "n/a"} • UI raw: {report.ptsd?.raw ?? "n/a"}
-  </div>
-)}
-
     </div>
   );
 }
