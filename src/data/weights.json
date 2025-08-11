@@ -1,0 +1,14 @@
+{
+  "PHQ9X": {
+    "intercept": 0.0,
+    "weights": {}
+  },
+  "GAD7X": {
+    "intercept": 0.0,
+    "weights": {}
+  },
+  "PCL5X": {
+    "intercept": 0.0,
+    "weights": {}
+  }
+}
