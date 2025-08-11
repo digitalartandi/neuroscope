@@ -1,3 +1,5 @@
+useEffect(() => { window.__report = report; }, [report]);
+
 // src/App.jsx
 import { buildReportUpgraded } from "./lib/report.validated";
 import React, { useEffect, useMemo, useRef, useState, lazy, Suspense } from "react";
