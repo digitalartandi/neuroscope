@@ -7,6 +7,23 @@ import { METRICS } from "../data/metrics";
 import { scoreMetric } from "./scoring";
 import { calibratedRaw } from "./calibration";
 
+// ⬇️ NEU: Cutoffs aus JSON laden
+import CUTS from "../data/norms/cutoffs.json";
+
+// Dynamische Anpassung der METRICS anhand von cutoffs.json
+if (CUTS?.PHQ9?.cutoffs) {
+  METRICS.PHQ9.cutoffs = CUTS.PHQ9.cutoffs.map(c => c.min);
+}
+if (CUTS?.GAD7?.cutoffs) {
+  METRICS.GAD7.cutoffs = CUTS.GAD7.cutoffs.map(c => c.min);
+}
+const pclRule = CUTS?.PCL5?.cutoff_rules?.find(
+  r => r.rule === "screen_positive_if_score_ge"
+);
+if (pclRule) {
+  METRICS.PCL5.cutoff = pclRule.value;
+}
+
 export function buildReportUpgraded(ans, progressPct = 0) {
   // 1) Validierte Kernskalen berechnen
   const phq = scoreMetric("PHQ9", ans);
@@ -32,7 +49,6 @@ export function buildReportUpgraded(ans, progressPct = 0) {
   const ptsd = { ...pcl, raw: ptsdRawUi }; // UI-raw für Balken; Band aus echtem Score
 
   // Platzhalter für weitere Bereiche, bis sie ähnlich „geankert“ sind.
-  // Wir geben sinnvolle Defaults zurück, um die aktuelle UI nicht zu brechen.
   const o = (raw=null, band=1) => ({ raw, band });
 
   return {
@@ -47,6 +63,6 @@ export function buildReportUpgraded(ans, progressPct = 0) {
     cog:  o(null, 1),
     res:  o(null, 2),
     func: { raw: null },
-    tasks: {},
+    tasks: {}
   };
 }
