@@ -3,6 +3,7 @@ import React, { useEffect, useMemo, useRef, useState, lazy, Suspense } from "rea
 import LoadingScreen from "./components/LoadingScreen";
 import { BANK } from "./data/bank";
 import Nav from "./components/Nav";
+import { buildReportUpgraded } from "./lib/report.validated";
 import SummaryCard from "./components/SummaryCard";
 
 // Lazy load cognitive modules for performance optimization
@@ -253,7 +254,6 @@ export default function App() {
     setTimeout(() => window.scrollTo({ top: 0, behavior: "smooth" }), 0);
   }
 
-  import { buildReportUpgraded } from "./lib/report.validated";
   const report = useMemo(() => buildReportUpgraded(ans, progress), [ans, progress]);
 
   // Ladebildschirm anzeigen solange "loading"
