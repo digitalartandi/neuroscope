@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "instruments": {
+    "PHQ9": {
+      "score_range": [0, 27],
+      "groups": [
+        { "group_id": "all_18_29", "label": "Alle 18–29", "n": null, "percentiles": [] },
+        { "group_id": "all_30_44", "label": "Alle 30–44", "n": null, "percentiles": [] },
+        { "group_id": "all_45_59", "label": "Alle 45–59", "n": null, "percentiles": [] },
+        { "group_id": "all_60plus", "label": "Alle 60+", "n": null, "percentiles": [] }
+      ]
+    },
+    "GAD7": {
+      "score_range": [0, 21],
+      "groups": [
+        { "group_id": "all_18_29", "label": "Alle 18–29", "n": null, "percentiles": [] },
+        { "group_id": "all_30_44", "label": "Alle 30–44", "n": null, "percentiles": [] },
+        { "group_id": "all_45_59", "label": "Alle 45–59", "n": null, "percentiles": [] },
+        { "group_id": "all_60plus", "label": "Alle 60+", "n": null, "percentiles": [] }
+      ]
+    },
+    "PCL5": {
+      "score_range": [0, 80],
+      "groups": [
+        { "group_id": "all_18_29", "label": "Alle 18–29", "n": null, "percentiles": [] },
+        { "group_id": "all_30_44", "label": "Alle 30–44", "n": null, "percentiles": [] },
+        { "group_id": "all_45_59", "label": "Alle 45–59", "n": null, "percentiles": [] },
+        { "group_id": "all_60plus", "label": "Alle 60+", "n": null, "percentiles": [] }
+      ]
+    }
+  },
+  "notes": "Dies ist ein leeres Norm-Schema. Tragt später echte Perzentil-Tabellen ein (z. B. deutschsprachige Stichproben)."
+}
