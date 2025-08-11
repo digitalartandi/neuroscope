@@ -248,16 +248,16 @@ export default function SummaryCard({ report, onRestart, onSave }) {
       </div>
 
       {/* Kritische Hinweise sofort sichtbar */}
-      {criticalNotes.length > 0 && (
-        <div className="mb-5 rounded-xl border border-red-300 bg-red-50 p-4">
-          <div className="font-semibold text-red-800 mb-1">Wichtige Hinweise</div>
-          <ul className="list-disc list-inside text-sm text-red-900">
-            {criticalNotes.map((t, i) => (
-              <li key={i}>{t}</li>
-            ))}
-          </ul>
-        </div>
-      )}
+{criticalNotes.length > 0 && (
+  <div className="mb-5 rounded-xl border border-red-300 bg-red-50 p-4">
+    <div className="font-semibold text-red-800 mb-1">Wichtige Hinweise</div>
+    <div className="space-y-1 text-sm text-red-900">
+      {criticalNotes.map((t, i) => (
+        <p key={i}>{t}</p>
+      ))}
+    </div>
+  </div>
+)}
 
       {/* Weitere Hinweise (optional ausklappbar) */}
       {otherNotes.length > 0 && (
