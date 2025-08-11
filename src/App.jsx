@@ -252,14 +252,6 @@ export default function App() {
   }
 
   const report = useMemo(() => buildReportUpgraded(ans, progress), [ans, progress]);
-useEffect(() => {
-    window.__report = report;
-  }, [report]);
-
-  return (
-    // dein JSX
-  );
-}
 
   // Ladebildschirm anzeigen solange "loading"
   if (loading) {
