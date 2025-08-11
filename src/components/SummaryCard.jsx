@@ -315,6 +315,11 @@ export default function SummaryCard({ report, onRestart, onSave }) {
       <p className="mt-2 text-xs text-gray-500">
         Hinweis: Deine Daten werden lokal auf deinem Gerät gespeichert. Bitte behandele die exportierte Datei vertraulich.
       </p>
+
+<div className="mt-6 text-center text-[11px] text-gray-500">
+  ✅ Validated scoring active (PHQ-9 • GAD-7 • PCL-5)
+</div>
+
     </div>
   );
 }
