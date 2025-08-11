@@ -32,8 +32,7 @@ function traumaSensitiveText(report) {
     texts.push("🟢 Stimmung wirkt stabil.");
   }
 
-  // Hier können weitere traumasensible Hinweise je nach Skalen ergänzt werden.
-
+  // ggf. weitere Hinweise ergänzen
   return texts;
 }
 
@@ -49,37 +48,20 @@ const COLOR_MAP = {
 // ICD-11 Einschätzung basierend auf Skalen im Report
 function icd11Assessment(report) {
   const conditions = [];
-
-  if (report.mood.band >= 3) {
-    conditions.push("Depressive Episode oder Major Depression");
-  }
-  if (report.anx.band >= 3) {
-    conditions.push("Generalisierte Angststörung oder andere Angststörungen");
-  }
-  if (report.ptsd.band >= 3) {
-    conditions.push("Posttraumatische Belastungsstörung (PTBS)");
-  }
-  if (report.ocd.band >= 3) {
-    conditions.push("Zwangsstörung");
-  }
-  if (report.bp && report.bp.band >= 3) {
-    conditions.push("Bipolare Störung");
-  }
-  if (report.psychosis && report.psychosis.band >= 3) {
-    conditions.push("Psychotische Störung");
-  }
-  if (report.stress && report.stress.band >= 3) {
-    conditions.push("Anpassungsstörung / Belastungsstörung");
-  }
+  if (report.mood.band >= 3) conditions.push("Depressive Episode oder Major Depression");
+  if (report.anx.band >= 3) conditions.push("Generalisierte Angststörung oder andere Angststörungen");
+  if (report.ptsd.band >= 3) conditions.push("Posttraumatische Belastungsstörung (PTBS)");
+  if (report.ocd?.band >= 3) conditions.push("Zwangsstörung");
+  if (report.bp?.band >= 3) conditions.push("Bipolare Störung");
+  if (report.psychosis?.band >= 3) conditions.push("Psychotische Störung");
+  if (report.stress?.band >= 3) conditions.push("Anpassungs-/Belastungsstörung");
   if (conditions.length === 0) {
     conditions.push("Keine eindeutigen Hinweise auf eine psychische Erkrankung im Sinne von ICD-11.");
   }
-
   return conditions;
 }
 
 /* ---------- kleine Hilfs-Komponenten ---------- */
-
 function Pill({ children, tone = "gray" }) {
   const toneMap = {
     gray: "bg-gray-100 text-gray-700 border-gray-200",
@@ -137,8 +119,33 @@ function labelBand(i, higherIsBetter = false) {
   return L[Math.min(i ?? 0, L.length - 1)];
 }
 
-/* ---------- Hauptkomponente ---------- */
+/* ---------- Gesamt-Einschätzung ---------- */
+function overallAssessment(report, icdConditions) {
+  // Grobe Schwereeinschätzung anhand der Bänder in Kernbereichen
+  const severes = [
+    report.mood.band >= 3 ? "Stimmung" : null,
+    report.anx.band >= 3 ? "Angst" : null,
+    report.ptsd.band >= 3 ? "Trauma" : null,
+    report.ocd?.band >= 3 ? "Zwänge" : null,
+  ].filter(Boolean);
 
+  const moderates = [
+    report.mood.band === 2 ? "Stimmung" : null,
+    report.anx.band === 2 ? "Angst" : null,
+    report.ptsd.band === 2 ? "Trauma" : null,
+    report.ocd?.band === 2 ? "Zwänge" : null,
+  ].filter(Boolean);
+
+  if (severes.length) {
+    return `Gesamtbild: deutliche Belastung (${severes.join(", ")}). Eine fachliche Abklärung wird empfohlen. Mögliche ICD-11-Bereiche (Screening): ${icdConditions.join(", ")}.`;
+  }
+  if (moderates.length) {
+    return `Gesamtbild: moderate Belastung (${moderates.join(", ")}). Achte auf Selbstfürsorge und erwäge Beratung. Mögliche ICD-11-Bereiche (Screening): ${icdConditions.join(", ")}.`;
+  }
+  return `Gesamtbild: aktuell keine auffälligen Belastungen. Mögliche ICD-11-Bereiche (Screening): ${icdConditions.join(", ")}.`;
+}
+
+/* ---------- Hauptkomponente ---------- */
 export default function SummaryCard({ report, onRestart, onSave }) {
   // Kernaussagen (kompakte Chips)
   const corePills = [
@@ -151,7 +158,12 @@ export default function SummaryCard({ report, onRestart, onSave }) {
   const traumaTexts = traumaSensitiveText(report);
   const icdConditions = icd11Assessment(report);
 
-  // Balken-Definition (unverändert inhaltlich)
+  // Kritische Hinweise sofort zeigen; restliche Hinweise optional ausklappbar
+  const criticalNotes = traumaTexts.filter(t => t.startsWith("🔴"));
+  const otherNotes = traumaTexts.filter(t => !t.startsWith("🔴"));
+  const [showAllNotes, setShowAllNotes] = useState(false);
+
+  // Balken-Definition (bestehende Inhalte/Maxima bleiben)
   const bars = [
     ["Stimmung", report.mood.raw, 27],
     ["Angst", report.anx.raw, 21],
@@ -164,25 +176,22 @@ export default function SummaryCard({ report, onRestart, onSave }) {
     ["Resilienz (↑gut)", report.res.raw, 20, true],
   ];
 
-  // Farbton für Trauma-Hinweis (seriös, ruhig)
-  const [showAllTraumaNotes, setShowAllTraumaNotes] = useState(false);
-  const primaryTraumaNote = traumaTexts[0];
-  const moreTraumaNotes = traumaTexts.slice(1);
-
   return (
     <div className="mt-4 animate-fade-in max-w-4xl mx-auto">
       {/* Kopf */}
       <div className="mb-5">
-        <h2 className="text-2xl sm:text-3xl font-bold">Zusammenfassung &amp; Dashboard</h2>
+        <h2 className="text-2xl sm:text-3xl font-bold">Deine Ergebnisse &amp; Orientierung</h2>
         <p className="mt-2 text-sm text-gray-600">
           Individuelle Orientierung – kein Ersatz für eine klinische Diagnose. Bitte beachte, dass mindestens 80% des Tests ausgefüllt sein sollten.
         </p>
       </div>
 
-      {/* Fortschritt + Kern-Chips */}
-      <div className="flex flex-col gap-3 mb-6">
-        <div className="font-semibold text-gray-700">Testfortschritt: {report.progress}%</div>
-        <div className="flex flex-wrap gap-2">
+      {/* Gesamt-Einschätzung (neu, kompakt & seriös) */}
+      <div className="mb-5 rounded-xl border border-gray-300 bg-white p-4">
+        <div className="text-sm text-gray-800">
+          {overallAssessment(report, icdConditions)}
+        </div>
+        <div className="mt-3 flex flex-wrap gap-2">
           {corePills.map(([k, v]) => (
             <Pill key={k} tone="blue">
               {k}: {v}
@@ -191,7 +200,33 @@ export default function SummaryCard({ report, onRestart, onSave }) {
         </div>
       </div>
 
-      {/* Gesamtüberblick (Balken kompakt) */}
+      {/* Kritische Hinweise sofort sichtbar */}
+      {criticalNotes.length > 0 && (
+        <div className="mb-5 rounded-xl border border-red-300 bg-red-50 p-4">
+          <div className="font-semibold text-red-800 mb-1">Wichtige Hinweise</div>
+          <ul className="list-disc list-inside text-sm text-red-900">
+            {criticalNotes.map((t, i) => <li key={i}>{t}</li>)}
+          </ul>
+        </div>
+      )}
+
+      {/* Weitere Hinweise (optional ausklappbar, enthält auch ⚠️/🟠/🟢) */}
+      {otherNotes.length > 0 && (
+        <div className="mb-6 rounded-xl border border-amber-300 bg-amber-50 p-4">
+          <div className="font-semibold text-amber-900">Hinweise &amp; Selbstfürsorge</div>
+          {!showAllNotes ? (
+            <button className="mt-2 text-xs underline text-amber-900" onClick={() => setShowAllNotes(true)}>
+              Weitere Hinweise anzeigen
+            </button>
+          ) : (
+            <ul className="mt-2 list-disc list-inside space-y-1 text-sm text-amber-900">
+              {otherNotes.map((t, i) => <li key={i}>{t}</li>)}
+            </ul>
+          )}
+        </div>
+      )}
+
+      {/* Überblick (Balken) */}
       <Section title="Überblick (Skalen)" defaultOpen>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {bars.map(([label, raw, max, higher]) => (
@@ -200,34 +235,7 @@ export default function SummaryCard({ report, onRestart, onSave }) {
         </div>
       </Section>
 
-      {/* Trauma-sensible Hinweise (kompakt + expandierbar) */}
-      <div className="mt-6 rounded-xl border border-amber-300 bg-amber-50 p-4">
-        <div className="text-sm">
-          <div className="font-semibold mb-1">Hinweise &amp; Selbstfürsorge</div>
-          <p className="text-amber-900">{primaryTraumaNote}</p>
-          {moreTraumaNotes.length > 0 && (
-            <>
-              {!showAllTraumaNotes && (
-                <button
-                  className="mt-2 text-xs underline text-amber-800"
-                  onClick={() => setShowAllTraumaNotes(true)}
-                >
-                  Weitere Hinweise anzeigen
-                </button>
-              )}
-              {showAllTraumaNotes && (
-                <ul className="mt-2 list-disc list-inside space-y-1 text-amber-900">
-                  {moreTraumaNotes.map((t, i) => (
-                    <li key={i} className="text-sm">{t}</li>
-                  ))}
-                </ul>
-              )}
-            </>
-          )}
-        </div>
-      </div>
-
-      {/* Thematische Details in Akkordeons (alle bisherigen Inhalte bleiben) */}
+      {/* Thematische Details – alle bisherigen Inhalte bleiben erhalten */}
       <div className="mt-6 space-y-4">
         <Section title="Emotionen">
           <div className={`rounded-xl ${COLOR_MAP.indigo} p-4 text-sm`}>
@@ -269,11 +277,9 @@ export default function SummaryCard({ report, onRestart, onSave }) {
               {report.func.raw == null
                 ? "Funktion: n/a."
                 : `Funktionieren: ${
-                    report.func.raw > 0.66
-                      ? "deutlich"
-                      : report.func.raw > 0.33
-                      ? "mäßig"
-                      : "gering"
+                    report.func.raw > 0.66 ? "deutlich"
+                    : report.func.raw > 0.33 ? "mäßig"
+                    : "gering"
                   }e Einschränkungen.`}
             </p>
           </div>
@@ -310,7 +316,7 @@ export default function SummaryCard({ report, onRestart, onSave }) {
         <Section title="Mögliche ICD-11-Erkrankungen (Screening)">
           <div className="p-4 rounded-lg border border-gray-200 bg-white">
             <ul className="list-disc list-inside text-sm text-gray-700">
-              {icdConditions.map((cond, idx) => (
+              {icd11Assessment(report).map((cond, idx) => (
                 <li key={idx}>{cond}</li>
               ))}
             </ul>
@@ -321,7 +327,7 @@ export default function SummaryCard({ report, onRestart, onSave }) {
         </Section>
       </div>
 
-      {/* Abschließender Hinweis (dein bestehender Text, seriöser gerahmt) */}
+      {/* Abschließender Hinweis (bestehend, seriös gerahmt) */}
       <div className="mt-6 p-4 rounded-lg border border-blue-200 bg-blue-50 text-sm text-blue-900">
         <p>
           Hinweis: Das heruntergeladene PDF kann für eine vertiefte Analyse bei ChatGPT hochgeladen werden. Dort kann eine weiterführende Einschätzung und mögliche Hilfestellung angeboten werden.
