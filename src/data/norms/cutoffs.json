@@ -1,0 +1,35 @@
+{
+  "PHQ9": {
+    "instrument": "PHQ-9",
+    "version": "standard",
+    "score_range": [0, 27],
+    "cutoffs": [
+      { "label": "minimal", "min": 0, "max": 4 },
+      { "label": "mild", "min": 5, "max": 9 },
+      { "label": "moderate", "min": 10, "max": 14 },
+      { "label": "moderately_severe", "min": 15, "max": 19 },
+      { "label": "severe", "min": 20, "max": 27 }
+    ],
+    "notes": "Weit verbreitete PHQ-9-Schwellen. Quelle bitte projektspezifisch ergänzen (Publikation/Jahr)."
+  },
+  "GAD7": {
+    "instrument": "GAD-7",
+    "version": "standard",
+    "score_range": [0, 21],
+    "cutoffs": [
+      { "label": "mild", "min": 5, "max": 9 },
+      { "label": "moderate", "min": 10, "max": 14 },
+      { "label": "severe", "min": 15, "max": 21 }
+    ],
+    "notes": "Gängige GAD-7-Grenzwerte. Quelle bitte projektspezifisch ergänzen (Publikation/Jahr)."
+  },
+  "PCL5": {
+    "instrument": "PCL-5",
+    "version": "standard",
+    "score_range": [0, 80],
+    "cutoff_rules": [
+      { "rule": "screen_positive_if_score_ge", "value": 33 }
+    ],
+    "notes": "Häufig verwendeter Screening-Grenzwert liegt zwischen 31–33; hier 33 gesetzt. Quelle bitte ergänzen."
+  }
+}
