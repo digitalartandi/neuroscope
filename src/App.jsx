@@ -1,9 +1,9 @@
 // src/App.jsx
+import { buildReportUpgraded } from "./lib/report.validated";
 import React, { useEffect, useMemo, useRef, useState, lazy, Suspense } from "react";
 import LoadingScreen from "./components/LoadingScreen";
 import { BANK } from "./data/bank";
 import Nav from "./components/Nav";
-import { buildReportUpgraded } from "./lib/report.validated";
 import SummaryCard from "./components/SummaryCard";
 
 // Lazy load cognitive modules for performance optimization
