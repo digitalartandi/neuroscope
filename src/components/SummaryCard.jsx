@@ -317,8 +317,8 @@ export default function SummaryCard({ report, onRestart, onSave }) {
       </p>
 
 {report.debugValidated && (
-  <div className="mt-6 text-center text-[11px] text-green-500">
-    ✅ Validated scoring is LIVE
+  <div className="mt-6 text-center text-[11px] text-green-600">
+    ✅ Validated scoring is LIVE • PCL-5 true raw: {report.ptsdTrueRaw ?? "n/a"} • UI raw: {report.ptsd?.raw ?? "n/a"}
   </div>
 )}
 
