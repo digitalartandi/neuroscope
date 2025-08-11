@@ -1,5 +1,3 @@
-useEffect(() => { window.__report = report; }, [report]);
-
 // src/App.jsx
 import { buildReportUpgraded } from "./lib/report.validated";
 import React, { useEffect, useMemo, useRef, useState, lazy, Suspense } from "react";
@@ -13,9 +11,6 @@ const TowerOfLondon = lazy(() => import("./modules/TowerOfLondon"));
 const NBack = lazy(() => import("./modules/NBack"));
 const Stroop = lazy(() => import("./modules/Stroop"));
 const Trails = lazy(() => import("./modules/Trails"));
-
-
-
 
 /* ============ small helpers ============ */
 const STORAGE_KEY = "psyche_state_v1"; // versioniert, um künftige Migrationen zu erleichtern
@@ -257,6 +252,14 @@ export default function App() {
   }
 
   const report = useMemo(() => buildReportUpgraded(ans, progress), [ans, progress]);
+useEffect(() => {
+    window.__report = report;
+  }, [report]);
+
+  return (
+    // dein JSX
+  );
+}
 
   // Ladebildschirm anzeigen solange "loading"
   if (loading) {
