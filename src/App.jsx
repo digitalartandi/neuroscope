@@ -1,5 +1,5 @@
 // src/App.jsx
-import { buildReportUpgraded } from "./report.validated";
+import { buildReportUpgraded } from "./lib/report.validated";
 import React, { useEffect, useMemo, useRef, useState, lazy, Suspense } from "react";
 import LoadingScreen from "./components/LoadingScreen";
 import { BANK } from "./data/bank";
