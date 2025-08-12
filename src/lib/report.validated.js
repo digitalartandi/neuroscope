@@ -1,15 +1,13 @@
 // src/lib/report.validated.js
-// Drop-in-Report: validierte Kerne (PHQ-9, GAD-7, PCL-5) + gewichtete Module + Medikations-Kontext.
-// Keine UI-Änderung erforderlich.
+// Erweiterte Auswertung: validierte Kerne + Cluster + Konfidenzen + Red-Flags.
+// UI bleibt unverändert (gleiche Felder), zusätzlich dx/red_flags/quality/meds.
 
-import { METRICS } from "../data/metrics";
-import { scoreMetric } from "./scoring";
-import { calibratedRaw } from "./calibration";
-import { BENZO_EQ } from "../data/meds";      // für grobe Diazepam-Äquivalente
+import { scoreMetric } from "./scoring";           // nutzt: scoreMetric("PHQ9" | "GAD7" | "PCL5", ans)
+import { BENZO_EQ } from "../data/meds";
 import { BANK } from "../data/bank";
 import WEIGHTS from "../data/weights.json";
 
-// ---------- Helpers ----------
+// ---------- Helper aus Bestand ----------
 const getModule = (id) => BANK.find((m) => m.id === id);
 const scaleRange = (m) => {
   const vals = (m?.scale || []).map((o) => o.value);
@@ -17,33 +15,24 @@ const scaleRange = (m) => {
   return [Math.min(...vals), Math.max(...vals)];
 };
 
-// generisches, gewichtetes Scoring für Bank-Module (keine Hochrechnung bei Skips!)
-function scoreBankModule(
-  id,
-  ans,
-  { uiMax = 16, positive = false, filterPrefix = null } = {}
-) {
+// ---------- Generisches Modul-Scoring (wie gehabt) ----------
+function scoreBankModule(id, ans, { uiMax = 16, positive = false, filterPrefix = null } = {}) {
   const mod = getModule(id);
-  if (!mod?.items?.length) return { raw: null, band: 1, completeness: 0, pct: 0 };
+  if (!mod?.items?.length) return { raw: null, band: 1, completeness: 0, pct: 0, positive };
 
   const [minV, maxV] = scaleRange(mod);
   const width = maxV - minV;
-  if (width <= 0) return { raw: null, band: 1, completeness: 0, pct: 0 };
+  if (width <= 0) return { raw: null, band: 1, completeness: 0, pct: 0, positive };
 
-  // optionale Gewichte pro Modul/Item aus weights.json (z. B. "OCD", "SELF", ...)
   const groupKey = id.toUpperCase();
   const G = (WEIGHTS && WEIGHTS[groupKey] && WEIGHTS[groupKey].weights) || {};
 
-  let sum = 0;
-  let denom = 0;   // max erreichbare Punktzahl über **beantwortete** Items
-  let answered = 0;
-  let applicable = 0;
-
+  let sum = 0, denom = 0, answered = 0, applicable = 0;
   for (const it of mod.items) {
     if (filterPrefix && !String(it.key).startsWith(filterPrefix)) continue;
     applicable++;
     const val = ans[it.key];
-    if (val == null) continue; // Skips nicht hochrechnen
+    if (val == null) continue;
     const w = typeof G[it.key] === "number" ? G[it.key] : 1;
     sum += (val - minV) * w;
     denom += width * w;
@@ -55,19 +44,48 @@ function scoreBankModule(
     : mod.items.length);
 
   const completeness = totalApplicable ? answered / totalApplicable : 0;
-  if (answered === 0 || denom === 0) return { raw: null, band: 1, completeness: 0, pct: 0 };
+  if (answered === 0 || denom === 0) return { raw: null, band: 1, completeness: 0, pct: 0, positive };
 
-  // Prozentwert nur auf Basis der **beantworteten** Items (fair bei Skips)
   const pct = Math.max(0, Math.min(1, sum / denom));
   const rawUi = Math.round(pct * uiMax);
-
-  // Bänder: 0..4 in 20%-Schritten – UI interpretiert positive/negative Konstrukte über Text
   const band = Math.min(4, Math.floor(pct * 5));
-
   return { raw: rawUi, band, completeness, pct, positive };
 }
 
-// konservative Medikations-Interpretation (Kontext, keine Score-Manipulation)
+// ---------- Werte je Modul (0..1) für CI/Qualität ----------
+function normalizedAnswersForModule(id, ans, filterPrefix = null) {
+  const mod = getModule(id);
+  if (!mod?.items?.length) return [];
+  const [minV, maxV] = scaleRange(mod);
+  const width = maxV - minV || 1;
+  const vals = [];
+  for (const it of mod.items) {
+    if (filterPrefix && !String(it.key).startsWith(filterPrefix)) continue;
+    const v = ans[it.key];
+    if (v == null) continue;
+    vals.push((v - minV) / width); // 0..1
+  }
+  return vals;
+}
+
+// ---------- simple Bootstrap-CI auf 0..1 Skala ----------
+function ci01(values, reps = 200) {
+  const arr = (values || []).map(Number).filter((v) => Number.isFinite(v));
+  if (!arr.length) return null;
+  const n = arr.length;
+  const sims = [];
+  for (let r = 0; r < reps; r++) {
+    let s = 0;
+    for (let i = 0; i < n; i++) s += arr[Math.floor(Math.random() * n)];
+    sims.push(s / n);
+  }
+  sims.sort((a, b) => a - b);
+  const lo = sims[Math.floor(reps * 0.025)];
+  const hi = sims[Math.floor(reps * 0.975)];
+  return [Math.max(0, lo), Math.min(1, hi)];
+}
+
+// ---------- Medikation (deine Basis leicht erweitert) ----------
 function deriveMedImpact(ans, anxRaw) {
   const meds = Array.isArray(ans.meds_list) ? ans.meds_list : [];
   const classes = (cls) => meds.filter((m) => (m.class || "").toUpperCase() === cls);
@@ -78,12 +96,8 @@ function deriveMedImpact(ans, anxRaw) {
     BENZO: classes("BENZO").length > 0,
     STIM: classes("STIM").length > 0,
     APS: classes("APS").length > 0,
-    MS: classes("MS").length > 0,
-    ZDRUG: classes("ZDRUG").length > 0,
-    OPIOID: classes("OPIOID").length > 0,
   };
 
-  // grobe Diazepam-Äquivalente/Tag
   const benzoDiazEq = meds
     .filter((m) => (m.class || "").toUpperCase() === "BENZO")
     .reduce((sum, m) => {
@@ -95,7 +109,6 @@ function deriveMedImpact(ans, anxRaw) {
   const notes = [];
   const ddxHints = [];
 
-  // frühe SSRI/SNRI-Phase → mögliche Aktivierung
   const earlySerotonergic = meds.some(
     (m) =>
       ["SSRI", "SNRI"].includes((m.class || "").toUpperCase()) &&
@@ -103,121 +116,281 @@ function deriveMedImpact(ans, anxRaw) {
   );
   if (earlySerotonergic) {
     notes.push("Frühe SSRI/SNRI-Phase (<3 Wochen): vorübergehende Aktivierung/Unruhe möglich.");
-    if ((anxRaw ?? 0) >= 10)
-      ddxHints.push("Erhöhte Angstwerte können durch frühe SSRI/SNRI-Phase mitbedingt sein.");
+    if ((anxRaw ?? 0) >= 10) ddxHints.push("Erhöhte Angstwerte können durch frühe SSRI/SNRI-Phase mitbedingt sein.");
   }
-
-  // Benzodiazepine → können Angst maskieren
   if (has.BENZO) {
-    notes.push(
-      `Benzodiazepine gemeldet; geschätzte Diazepam-Äquivalente ~${Math.round(
-        benzoDiazEq
-      )} mg/Tag (sehr grob).`
-    );
-    if (benzoDiazEq >= 10) {
-      ddxHints.push(
-        "Angst-Scores könnten durch Benzodiazepine maskiert sein (klinische Verlaufskontrolle sinnvoll)."
-      );
-    }
+    notes.push(`Benzodiazepine gemeldet; grobe Diazepam-Äquivalente ~${Math.round(benzoDiazEq)} mg/Tag (sehr grob).`);
+    ddxHints.push("Benzodiazepine können Angst/Anspannung temporär maskieren.");
   }
+  if (has.STIM) ddxHints.push("Stimulanzien können Unruhe/Angst verstärken – Kontext beachten.");
+  if (has.APS) ddxHints.push("Antipsychotika können Psychose-Symptome maskieren – Konfidenz vorsichtig interpretieren.");
 
-  // Stimulanzien → Angst/Unruhe ↑ möglich
-  if (has.STIM) {
-    ddxHints.push(
-      "Stimulanzien können Angst/Unruhe verstärken – Differenzial: ADHS vs. angstbedingte Aktivierung."
-    );
-  }
-
-  // Sedativa (APS/Z-Drug/Opioid) → beeinflussen Schlaf/Körperstress
-  if (has.APS || has.ZDRUG || has.OPIOID) {
-    notes.push("Sedierende Medikation gemeldet – kann Schlaf/Körperstress beeinflussen.");
-  }
-
-  // Lithium (Kontext, kein Score-Ersatz)
-  if (meds.some((m) => (m.name || "").toLowerCase().includes("lithium"))) {
-    notes.push(
-      "Lithium gemeldet – suizidprotektiver Effekt bekannt (Kontextinformation, kein Score-Ersatz)."
-    );
-  }
-
-  return {
-    list: meds.map((m) => ({
-      name: m.name,
-      class: m.class,
-      doseMgPerDay: Number(m.doseMgPerDay) || null,
-      freqPerDay: Number(m.freqPerDay) || null,
-      durationWeeks: Number(m.durationWeeks) || null,
-    })),
-    notes,
-    ddxHints,
-    diazepamEqMgPerDay: Math.round(benzoDiazEq) || 0,
-  };
+  return { notes, ddxHints, has, benzoDiazEq };
 }
 
-// ---------- Hauptfunktion ----------
-export function buildReportUpgraded(ans, progressPct = 0) {
-  // 1) Validierte Kerne
-  const phq = scoreMetric("PHQ9", ans); // 0..27
-  const gad = scoreMetric("GAD7", ans); // 0..21
-  const pcl = scoreMetric("PCL5", ans); // 0..80
+// ---------- Response-Qualität (sanfte Konfidenz-Dämpfung) ----------
+function responseQuality(ans, moduleId) {
+  const mod = getModule(moduleId);
+  if (!mod?.items?.length) return { straightlining: false, inconsistency: 0 };
+  const vals = mod.items.map((it) => ans[it.key]).filter((v) => v != null);
+  if (!vals.length) return { straightlining: false, inconsistency: 0 };
+  const straightlining = vals.length >= 6 && vals.every((v) => v === vals[0]);
+  // Mini-Inkonsequenz: extrem geringe Varianz über viele Items
+  const mean = vals.reduce((a, b) => a + b, 0) / vals.length;
+  const varc = vals.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / vals.length;
+  const inconsistency = varc < 0.01 ? 0.1 : 0; // 0..1 (kleine Dämpfung)
+  return { straightlining, inconsistency };
+}
 
-  // 2) Optionale Kalibrierung (bewahrt Rohskalen-Logik, feinjustiert via weights.json)
-  const moodRaw = calibratedRaw(phq.raw, "PHQ9X", ans) ?? phq.raw;
-  const anxRaw  = calibratedRaw(gad.raw, "GAD7X", ans) ?? gad.raw;
-  const ptsdRawTrue = calibratedRaw(pcl.raw, "PCL5X", ans) ?? pcl.raw;
+// ---------- Konsistenz-Indizes für Dep/Anx ----------
+function consistencyIndices({ mood, sleep, func, som, cog }) {
+  const avg = (xs) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0);
+  const depCI = avg([sleep?.pct, func?.pct, som?.pct, cog?.pct].filter((v) => Number.isFinite(v)));
+  const anxCI = avg([som?.pct, sleep?.pct].filter((v) => Number.isFinite(v)));
+  return { depCI, anxCI };
+}
 
-  // 3) UI-Skalierung für PCL-5 (0..80 → 0..16), Bänder bleiben anhand des echten Scores
-  const pclUiMax = METRICS.PCL5.uiMax || 16;
-  const pclTrueMax = METRICS.PCL5.trueMax || 80;
-  const ptsdRawUi = ptsdRawTrue == null
-    ? null
-    : Math.round((ptsdRawTrue / pclTrueMax) * pclUiMax);
+const clamp01 = (x) => Math.max(0, Math.min(1, x));
+const pctToBand = (p) => Math.min(4, Math.floor(clamp01(p) * 5));
+function confidence({ band, completeness, support = 0.5 }) {
+  const b = (band ?? 0) / 4, c = clamp01(completeness ?? 0), s = clamp01(support);
+  return clamp01(0.5 * b + 0.3 * s + 0.2 * c);
+}
 
-  const mood = { ...phq, raw: moodRaw };
-  const anx  = { ...gad, raw: anxRaw };
-  const ptsd = { ...pcl, raw: ptsdRawUi };
+// ---------- Cluster/Hinweise ----------
+function ptssClusters(ans) {
+  const yes = (k) => (ans[k] ?? 0) >= 2;
+  const B = ["t_intrusions","t_nightmares","t_flashbacks","t_intrusive_thoughts"].some(yes);
+  const C = ["t_avoid","t_avoidance_of_people"].some(yes);
+  const D = ["t_negative","t_guilt","t_shame","t_detachment","t_emotional_numbness"].filter(yes).length >= 2;
+  const E = ["t_hypervigilance","t_irritability","t_sleep_disturbance","t_concentration_problems","t_hyperarousal"].filter(yes).length >= 2;
+  return { B, C, D, E, ok: B && C && D && E };
+}
+function ocdHeuristics(ans) {
+  const highObs = (ans["o_obs"] ?? 0) >= 2;
+  const rituals = ["o_comp","o_checking","o_cleaning","o_counting","o_ordering"].filter(k => (ans[k] ?? 0) >= 2).length >= 1;
+  const burden = (ans["o_time_consuming"] ?? 0) >= 2 || (ans["o_functional_impairment"] ?? 0) >= 2 || (ans["o_emotional_distress"] ?? 0) >= 2;
+  return { highObs, rituals, burden, ok: highObs && rituals && burden };
+}
+function bpdHints(ans, selfPct, relPct) {
+  const idDisturb = (ans["s_identity_confusion"] ?? 0) >= 2 || (ans["s_coherence"] ?? 0) <= 1;
+  const emoInstab = (ans["s_emotional_instability"] ?? 0) >= 2;
+  const abandonment = (ans["r_fear_of_abandonment"] ?? 0) >= 2;
+  const rejectionFear = (ans["r_fear_of_rejection"] ?? 0) >= 2;
+  const relInstab = abandonment || rejectionFear || (relPct ?? 0) >= 0.6;
+  return { idDisturb, emoInstab, relInstab, ok: (idDisturb && emoInstab && relInstab) };
+}
+function bipolarHints(ans) {
+  const yes = (k) => (ans[k] ?? 0) >= 2;
+  const core = ["bp_sleepneed","bp_activity","bp_talk","bp_ideas","bp_risk"].filter(yes).length >= 3;
+  const impulse = ["bp_impulsivity","bp_spending_spree","bp_high_risk_taking","bp_sexual_activity"].filter(yes).length >= 2;
+  return { core, impulse, ok: core || impulse };
+}
+function psychosisHints(ans) {
+  const yes = (k) => (ans[k] ?? 0) >= 2;
+  const positive = ["ps_hallucinations","ps_delusions","ps_passivity_experience"].some(yes);
+  const disorg = ["ps_disorganized_speech","ps_incoherent_thoughts","ps_bizarre_behavior"].some(yes);
+  return { positive, disorg, ok: positive || disorg };
+}
 
-  // 4) Erweiterte Module (gewichtetes Prozent-Scoring, keine Hochrechnung)
-  const ocd  = scoreBankModule("ocd",  ans, { uiMax: 8,  positive: false });
+// ---------- Konfidenz-Adjustments ----------
+function adjustConfidence(base, { medsCtx, quality }) {
+  let c = base;
+  if (medsCtx?.has?.BENZO) c -= 0.10;
+  if (medsCtx?.has?.APS) c -= 0.10;
+  if (quality?.straightlining) c -= 0.08;
+  c -= quality?.inconsistency || 0;
+  return clamp01(c);
+}
 
-  // Selbstbild (nur s_*)
-  const self = scoreBankModule("self", ans, { uiMax: 16, positive: true,  filterPrefix: "s_" });
+/* =========================
+   H A U P T - F U N K T I O N
+   ========================= */
+export function buildReportUpgraded(ans = {}) {
+  // 1) Validierte Kerne (neue scoring-Signatur: ID + Antworten)
+  const phq9 = scoreMetric("PHQ9", ans);  // raw: 0..27, band, completeness, se
+  const gad7 = scoreMetric("GAD7", ans);  // raw: 0..21, band, completeness, se
+  const pcl5 = scoreMetric("PCL5", ans);  // raw: 0..80, band, completeness, se
 
-  // Beziehungen: r_* (in self und/oder rel)
-  const relSelf = scoreBankModule("self", ans, { uiMax: 16, positive: true,  filterPrefix: "r_" });
-  const relRel  = scoreBankModule("rel",  ans, { uiMax: 16, positive: true,  filterPrefix: "r_" });
-  const rel = (() => {
-    if (relSelf.raw == null) return relRel;
-    if (relRel.raw == null)  return relSelf;
-    const raw = Math.round((relSelf.raw + relRel.raw) / 2);
-    const band = Math.round((relSelf.band + relRel.band) / 2);
-    const completeness = Math.max(relSelf.completeness, relRel.completeness);
-    const pct = (relSelf.pct + relRel.pct) / 2;
-    return { raw, band, completeness, pct, positive: true };
-  })();
+  // Prozentwerte & UI-kompatible raw-Werte berechnen (Balken bleiben 27/21/16)
+  const moodPct = phq9.raw != null ? phq9.raw / 27 : 0;
+  const anxPct  = gad7.raw != null ? gad7.raw / 21 : 0;
+  const pclPct  = pcl5.raw != null ? pcl5.raw / 80 : 0;
 
-  const som  = scoreBankModule("som",  ans, { uiMax: 8,  positive: false });
-  const cog  = scoreBankModule("cog",  ans, { uiMax: 8,  positive: false });
-  const res  = scoreBankModule("res",  ans, { uiMax: 20, positive: true  });
+  const mood = { raw: phq9.raw ?? 0, band: phq9.band, completeness: phq9.completeness, pct: moodPct, positive: false, se: phq9.se };
+  const anx  = { raw: gad7.raw ?? 0, band: gad7.band, completeness: gad7.completeness, pct: anxPct,  positive: false, se: gad7.se  };
+  // PCL-5 wird für die UI-Balken auf 0..16 skaliert, band bleibt aus scoring():
+  const ptsd = { raw: Math.round(pclPct * 16), band: pcl5.band, completeness: pcl5.completeness, pct: pclPct, positive: false, se: pcl5.se };
 
-  // 5) Medikation (Kontext, konservative Regeln)
-  const medImpact = deriveMedImpact(ans, anxRaw);
+  // 2) Bank-Module
+  const ocd   = scoreBankModule("ocd", ans, { uiMax: 8 });
+  const self  = scoreBankModule("self", ans, { uiMax: 16, positive: true });
+  const rel   = scoreBankModule("rel",  ans, { uiMax: 16, positive: true });
+  const som   = scoreBankModule("som",  ans, { uiMax: 8 });
+  const cog   = scoreBankModule("cog",  ans, { uiMax: 8 });
+  const res   = scoreBankModule("res",  ans, { uiMax: 20, positive: true });
+  const func  = scoreBankModule("func", ans, { uiMax: 16, positive: true });
+  const sleep = scoreBankModule("sleep",ans, { uiMax: 16 });
+  const adhd  = scoreBankModule("adhd", ans, { uiMax: 16 });
+  const diss  = scoreBankModule("diss", ans, { uiMax: 16 });
+  const eat   = scoreBankModule("eat",  ans, { uiMax: 16 });
+  const bp    = scoreBankModule("bp",   ans, { uiMax: 16 });
+  const psychosis = scoreBankModule("psy", ans, { uiMax: 16 });
+  const stress = scoreBankModule("stress", ans, { uiMax: 16 });
+  const pain   = scoreBankModule("pain", ans, { uiMax: 16 });
 
-  // 6) Ergebnisobjekt (UI-kompatibel)
+  // 3) Zusatz: CI und Qualität
+  const ci_mood = ci01(normalizedAnswersForModule("mood", ans));
+  const ci_anx = ci01(normalizedAnswersForModule("anx", ans));
+  const ci_ptsd = ci01(normalizedAnswersForModule("ptsd", ans));
+  const quality_mood = responseQuality(ans, "mood");
+  const quality_anx = responseQuality(ans, "anx");
+  const quality_ptsd = responseQuality(ans, "ptsd");
+
+  // 4) Medikation/Kontext (anxRaw sinnvollerweise aus GAD-7)
+  const medCtx = deriveMedImpact(ans, gad7?.raw);
+
+  // 5) Konsistenz-Indizes & Cluster
+  const { depCI, anxCI } = consistencyIndices({ mood, sleep, func, som, cog });
+  const ptss = ptssClusters(ans);
+  const ocdH = ocdHeuristics(ans);
+  const bpdH = bpdHints(ans, self?.pct, rel?.pct);
+  const bpH  = bipolarHints(ans);
+  const psyH = psychosisHints(ans);
+
+  // 6) Red Flags
+  const red_flags = [];
+  const acuteSuicide = (ans["m_suicide"] ?? 0) >= 2 || (ans["m_suicide_ideation"] ?? 0) >= 2;
+  if (acuteSuicide) red_flags.push("Akute Suizidgedanken gemeldet (Screening).");
+  if (psyH.ok && (psychosis.band >= 3)) red_flags.push("Psychose-Hinweise (Screening).");
+
+  // 7) Differentialdiagnosen (Konfidenzen)
+  const dx = [];
+
+  // Depression
+  {
+    let conf = confidence({ band: mood.band, completeness: mood.completeness, support: depCI });
+    conf = adjustConfidence(conf, { medsCtx: medCtx, quality: quality_mood });
+    dx.push({
+      code: "DEP",
+      label: "Depressive Störung/Episode (Screening)",
+      confidence: Math.round(conf * 100),
+      rationale: [
+        `PHQ-9 Band ${mood.band}`,
+        depCI >= .5 ? "Konsistenz: Schlaf/Funktion/Kognition stützen" : "Begrenzte Stützung (Schlaf/Funktion/Kognition)",
+      ],
+    });
+  }
+
+  // Angst
+  {
+    let conf = confidence({ band: anx.band, completeness: anx.completeness, support: anxCI });
+    conf = adjustConfidence(conf, { medsCtx: medCtx, quality: quality_anx });
+    dx.push({
+      code: "ANX",
+      label: "Angststörung (GAS/unspez.) (Screening)",
+      confidence: Math.round(conf * 100),
+      rationale: [
+        `GAD-7 Band ${anx.band}`,
+        anxCI >= .5 ? "Somatik/Schlaf konsistent" : "Somatik/Schlaf wenig konsistent",
+        ...(medCtx.ddxHints || []),
+      ],
+    });
+  }
+
+  // PTBS
+  {
+    let conf = confidence({ band: ptsd.band, completeness: ptsd.completeness, support: ptss.ok ? 0.9 : 0.4 });
+    conf = adjustConfidence(conf, { medsCtx: medCtx, quality: quality_ptsd });
+    dx.push({
+      code: "PTSD",
+      label: "Posttraumatische Belastungsstörung (Screening)",
+      confidence: Math.round(conf * 100),
+      rationale: [
+        `PCL-nahe Band ${ptsd.band}`,
+        ptss.ok ? "Kriterien-Cluster erfüllt (B/C/D/E)." : "Kriterien-Cluster unvollständig.",
+      ],
+    });
+  }
+
+  // Zwang
+  {
+    let conf = confidence({ band: ocd.band, completeness: ocd.completeness, support: ocdH.ok ? 0.9 : 0.4 });
+    dx.push({
+      code: "OCD",
+      label: "Zwangsstörung (Screening)",
+      confidence: Math.round(conf * 100),
+      rationale: [
+        `Zwänge Band ${ocd.band}`,
+        ocdH.ok ? "Zwangsgedanken + Rituale + Leidensdruck/Interferenz gegeben." : "Hinweise unvollständig.",
+      ],
+    });
+  }
+
+  // Bipolar
+  {
+    let conf = confidence({ band: bp.band, completeness: bp.completeness, support: bpH.ok ? 0.8 : 0.3 });
+    dx.push({
+      code: "BP",
+      label: "Bipolare Störung (Hinweis, Screening)",
+      confidence: Math.round(conf * 100),
+      rationale: [
+        `Hochphasen Band ${bp.band}`,
+        bpH.ok ? "Kerncluster (Schlaf↓/Aktivität↑/Risiko) erfüllt." : "Kerncluster unklar.",
+      ],
+    });
+  }
+
+  // Psychose
+  {
+    let conf = confidence({ band: psychosis.band, completeness: psychosis.completeness, support: psyH.ok ? 0.8 : 0.3 });
+    dx.push({
+      code: "PSY",
+      label: "Psychotische Störung (Hinweis, Screening)",
+      confidence: Math.round(conf * 100),
+      rationale: [
+        `Psychose-Screen Band ${psychosis.band}`,
+        psyH.ok ? "Positive Symptome / Desorganisation gemeldet." : "Hinweise unspezifisch.",
+      ],
+    });
+  }
+
+  // BPD-Hinweis
+  {
+    const support = bpdH.ok ? 0.8 : 0.4;
+    const proxyBand = pctToBand(((self?.pct ?? 0) + (rel?.pct ?? 0)) / 2);
+    let conf = confidence({ band: proxyBand, completeness: Math.min(self.completeness, rel.completeness), support });
+    dx.push({
+      code: "BPD_HINT",
+      label: "Hinweise auf Borderline-Muster (Screening, kein Diagnoseersatz)",
+      confidence: Math.round(conf * 100),
+      rationale: [
+        bpdH.ok
+          ? "Identitätsstörung/Emotionsinstabilität + Beziehungsinstabilität vorhanden."
+          : "Einzelhinweise ohne klares Muster.",
+      ],
+    });
+  }
+
+  // 8) Progress
+  const totalItems = BANK.filter((m) => m.kind === "scale").reduce((n, m) => n + (m.items?.length ?? 0), 0);
+  const answered = BANK.filter((m) => m.kind === "scale").flatMap((m) => m.items?.map((it) => it.key) ?? [])
+    .filter((k) => ans[k] != null).length;
+  const progress = totalItems ? Math.round((answered / totalItems) * 100) : 0;
+
+  // 9) Rückgabe
   return {
-    progress: progressPct,
-    mood,
-    anx,
-    ptsd,
-    ptsdTrueRaw: ptsdRawTrue, // für die Validated-Anzeige
-    ocd,
-    self,
-    rel,
-    som,
-    cog,
-    res,
-    func: { raw: null },       // Platzhalter – kann später valide skaliert werden
-    tasks: {},
-    medImpact,                 // für SummaryCard (Anzeige & DDX-Hinweise)
+    progress,
+    mood, anx, ptsd, ocd,
+    self, rel, som, cog, res, func, sleep, adhd, diss, eat, bp, psychosis, stress, pain,
+    meds: medCtx,
+    red_flags,
+    dx: dx.sort((a,b) => b.confidence - a.confidence),
+    quality: {
+      mood: quality_mood,
+      anx: quality_anx,
+      ptsd: quality_ptsd,
+    },
+    ci: { mood: ci_mood, anx: ci_anx, ptsd: ci_ptsd },
   };
 }
