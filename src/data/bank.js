@@ -261,27 +261,41 @@ export const BANK = [
   },
 
   /* ---------- Selbstbild ---------- */
-  {
-    id: "self",
-    kind: "scale",
-    title: "Selbstbild & Identität",
-    scale: FREQ_0_4,
-    items: [
-      { key: "s_worth", q: "Wie oft hattest du ein positives Selbstbild?" },
-      { key: "s_coherence", q: "Wie häufig hast du dich als zusammenhängende Person erlebt?" },
-      { key: "s_goals", q: "Wie oft hattest du klare persönliche Ziele?" },
-      { key: "s_selfcomp", q: "Wie häufig warst du mit dir selbst mitfühlend und nachsichtig?" },
-      { key: "s_identity", q: "Wie oft hattest du das Gefühl, deine Identität zu verstehen?" },
-      { key: "s_autonomy", q: "Wie häufig hast du dich selbstbestimmt gefühlt?" },
-      { key: "s_self_acceptance", q: "Wie oft hast du dich so akzeptiert, wie du bist?" },
-      { key: "s_emotional_regulation", q: "Wie häufig konntest du deine Emotionen gut regulieren?" },
-      { key: "s_self_esteem_fluctuation", q: "Wie häufig schwankte dein Selbstwertgefühl?" },
-      { key: "s_self_doubt", q: "Wie oft hattest du Zweifel an dir selbst?" },
-      { key: "s_self_criticism", q: "Wie häufig warst du selbstkritisch?" },
-      { key: "s_resilience", q: "Wie oft hast du dich schnell von Rückschlägen erholt?" },
-      { key: "s_self_efficacy", q: "Wie häufig hattest du das Gefühl, Dinge bewältigen zu können?" },
-    ],
-    next: "rel",
+{
+  id: "self",
+  kind: "scale",
+  title: "Selbstbild & Identität",
+  scale: FREQ_0_4,
+  items: [
+    { key: "s_worth", q: "Wie oft hattest du ein positives Selbstbild?" },
+    { key: "s_coherence", q: "Wie häufig hast du dich als zusammenhängende Person erlebt?" },
+    { key: "s_goals", q: "Wie oft hattest du klare persönliche Ziele?" },
+    { key: "s_selfcomp", q: "Wie häufig warst du mit dir selbst mitfühlend und nachsichtig?" },
+    { key: "s_identity", q: "Wie oft hattest du das Gefühl, deine Identität zu verstehen?" },
+    { key: "s_autonomy", q: "Wie häufig hast du dich selbstbestimmt gefühlt?" },
+    { key: "s_self_acceptance", q: "Wie oft hast du dich so akzeptiert, wie du bist?" },
+    { key: "s_emotional_regulation", q: "Wie häufig konntest du deine Emotionen gut regulieren?" },
+    { key: "s_self_esteem_fluctuation", q: "Wie häufig schwankte dein Selbstwertgefühl?" },
+    { key: "s_self_doubt", q: "Wie oft hattest du Zweifel an dir selbst?" },
+    { key: "s_self_criticism", q: "Wie häufig warst du selbstkritisch?" },
+    { key: "s_resilience", q: "Wie oft hast du dich schnell von Rückschlägen erholt?" },
+    { key: "s_self_efficacy", q: "Wie häufig hattest du das Gefühl, Dinge bewältigen zu können?" },
+
+    // Neue, diagnostisch relevante Fragen
+    { key: "s_identity_confusion", q: "Wie oft hattest du das Gefühl, nicht zu wissen, wer du wirklich bist?" },
+    { key: "s_conflict_values", q: "Wie häufig hattest du innere Konflikte zwischen deinen Werten oder Zielen?" },
+    { key: "s_feeling_inferior", q: "Wie oft hast du dich anderen Menschen unterlegen gefühlt?" },
+    { key: "s_need_validation", q: "Wie häufig warst du stark auf die Bestätigung anderer angewiesen?" },
+    { key: "s_body_image", q: "Wie oft warst du unzufrieden mit deinem äußeren Erscheinungsbild?" },
+    { key: "s_shame_proneness", q: "Wie oft hast du dich für deine Person oder dein Verhalten geschämt?" },
+    { key: "s_emotional_instability", q: "Wie häufig hattest du plötzliche oder starke Stimmungsschwankungen?" },
+    { key: "s_fear_failure", q: "Wie oft hattest du Angst, als Person zu versagen?" },
+    { key: "s_disconnection_self", q: "Wie oft hattest du das Gefühl, dich von deinem eigenen Selbst zu entfremden?" },
+    { key: "s_role_confusion", q: "Wie häufig hattest du Schwierigkeiten, deine Rolle im Leben zu definieren?" },
+    { key: "s_pride_in_self", q: "Wie oft warst du stolz auf dich selbst?" },
+    { key: "s_future_self_image", q: "Wie klar konntest du dir vorstellen, wer du in Zukunft sein möchtest?" }
+  ],
+  next: "rel",
   },
 
   /* ---------- Beziehungen ---------- */
