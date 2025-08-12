@@ -1,14 +1,11 @@
 import React from "react";
 
 export default function ScaleModule({ module, answers, onAnswer, onNext, onBack, isFirst }) {
-  // Prüfe, ob alle Items beantwortet sind
-  const unanswered = (module.items || []).filter((it) => answers[it.key] === undefined);
+  // nur echte Antworten zählen (null = bewusst übersprungen)
+  const unanswered = (module.items || []).filter((it) => answers[it.key] == null);
 
   function handleNext() {
-    if (unanswered.length > 0) {
-      alert("Bitte beantworte alle Fragen oder überspringe sie bewusst.");
-      return;
-    }
+    // nicht mehr blockieren – weiter geht's auch bei offenen Items
     onNext();
   }
 
@@ -18,7 +15,7 @@ export default function ScaleModule({ module, answers, onAnswer, onNext, onBack,
 
       <div className="mt-3 space-y-3">
         {(module.items || []).map((it) => {
-          const isUnanswered = answers[it.key] === undefined;
+          const isUnanswered = answers[it.key] == null;
           return (
             <fieldset
               key={it.key}
@@ -28,7 +25,7 @@ export default function ScaleModule({ module, answers, onAnswer, onNext, onBack,
             >
               <legend className="text-[15px] font-medium">{it.q}</legend>
               <div role="radiogroup" aria-label={it.q} className="mt-3 space-y-2">
-                {(module.scale || []).map((opt) => {
+                { (it.scale || module.scale || []).map((opt) => {
                   const id = `${it.key}-${opt.value}`;
                   const selected = answers[it.key] === opt.value;
                   return (
@@ -57,7 +54,7 @@ export default function ScaleModule({ module, answers, onAnswer, onNext, onBack,
                 <div className="flex justify-end">
                   <button
                     type="button"
-                    onClick={() => onAnswer(it.key, undefined)}
+                    onClick={() => onAnswer(it.key, null)}  // <— bewusst übersprungen
                     className="text-xs text-gray-500 underline"
                     aria-label={`Antwort für Frage '${it.q}' überspringen`}
                   >

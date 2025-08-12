@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 
 /** tiny emoji icons per section (swap for your icon set if you like) */
 const ICONS = {
+
   mood: "😊", mood_func: "🧭",
   anx: "😟", anx_func: "🧭",
   ptsd: "⚡", ptsd_safety: "🛡️",
@@ -22,6 +23,7 @@ const ICONS = {
   stress: "💼",
   pain: "🩹",
   sub: "🍷",
+  meds: "💊",
   tol: "🗼",
   nback: "🔤",
   stroop: "🎨",

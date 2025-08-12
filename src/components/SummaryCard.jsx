@@ -11,11 +11,11 @@ function traumaSensitiveText(report) {
     );
   }
 
-  if (report.ptsd.band >= 3) {
+  if (report.ptsd?.band >= 3) {
     texts.push(
       "🔴 Deutliche Hinweise auf mögliche Belastungen durch Trauma. Professionelle Unterstützung kann hilfreich sein."
     );
-  } else if (report.ptsd.band === 2) {
+  } else if (report.ptsd?.band === 2) {
     texts.push(
       "🟠 Moderate Anzeichen für Traumafolgen. Achte auf deine psychische Gesundheit."
     );
@@ -23,11 +23,11 @@ function traumaSensitiveText(report) {
     texts.push("🟢 Aktuell keine auffälligen Trauma-Anzeichen.");
   }
 
-  if (report.mood.band >= 3) {
+  if (report.mood?.band >= 3) {
     texts.push(
       "🔴 Starke Belastungen in der Stimmung. Eine weitere Abklärung durch Fachpersonen wird empfohlen."
     );
-  } else if (report.mood.band === 2) {
+  } else if (report.mood?.band === 2) {
     texts.push("🟠 Leichte bis moderate Stimmungsschwankungen sind vorhanden.");
   } else {
     texts.push("🟢 Stimmung wirkt stabil.");
@@ -48,9 +48,9 @@ const COLOR_MAP = {
 // ICD-11 Einschätzung basierend auf Skalen im Report
 function icd11Assessment(report) {
   const conditions = [];
-  if (report.mood.band >= 3) conditions.push("Depressive Episode oder Major Depression");
-  if (report.anx.band >= 3) conditions.push("Generalisierte Angststörung oder andere Angststörungen");
-  if (report.ptsd.band >= 3) conditions.push("Posttraumatische Belastungsstörung (PTBS)");
+  if (report.mood?.band >= 3) conditions.push("Depressive Episode oder Major Depression");
+  if (report.anx?.band >= 3) conditions.push("Generalisierte Angststörung oder andere Angststörungen");
+  if (report.ptsd?.band >= 3) conditions.push("Posttraumatische Belastungsstörung (PTBS)");
   if (report.ocd?.band >= 3) conditions.push("Zwangsstörung");
   if (report.bp?.band >= 3) conditions.push("Bipolare Störung");
   if (report.psychosis?.band >= 3) conditions.push("Psychotische Störung");
@@ -125,16 +125,16 @@ function labelBand(i, higherIsBetter = false) {
 // Kompakte Gesamt-Einschätzung (1–2 Sätze)
 function overallAssessment(report, icdConditions) {
   const severes = [
-    report.mood.band >= 3 ? "Stimmung" : null,
-    report.anx.band >= 3 ? "Angst" : null,
-    report.ptsd.band >= 3 ? "Trauma" : null,
+    report.mood?.band >= 3 ? "Stimmung" : null,
+    report.anx?.band >= 3 ? "Angst" : null,
+    report.ptsd?.band >= 3 ? "Trauma" : null,
     report.ocd?.band >= 3 ? "Zwänge" : null,
   ].filter(Boolean);
 
   const moderates = [
-    report.mood.band === 2 ? "Stimmung" : null,
-    report.anx.band === 2 ? "Angst" : null,
-    report.ptsd.band === 2 ? "Trauma" : null,
+    report.mood?.band === 2 ? "Stimmung" : null,
+    report.anx?.band === 2 ? "Angst" : null,
+    report.ptsd?.band === 2 ? "Trauma" : null,
     report.ocd?.band === 2 ? "Zwänge" : null,
   ].filter(Boolean);
 
@@ -158,31 +158,48 @@ export default function SummaryCard({ report, onRestart, onSave }) {
   const traumaTexts = traumaSensitiveText(report);
   const icdConditions = icd11Assessment(report);
 
-  // Kritische Hinweise sofort zeigen; weitere Hinweise optional
+  // Kritische Hinweise sofort zeigen; weitere Hinweise optional (entfernt)
   const criticalNotes = traumaTexts.filter((t) => t.startsWith("🔴"));
   const otherNotes = traumaTexts.filter((t) => !t.startsWith("🔴"));
-  const [showAllNotes, setShowAllNotes] = useState(false);
 
   // Kernaussagen (kompakte Chips)
   const corePills = [
-    ["Stimmung", labelBand(report.mood.band, false)],
-    ["Angst", labelBand(report.anx.band, false)],
-    ["Trauma", labelBand(report.ptsd.band, false)],
-    ["Zwänge/Impulse", labelBand(report.ocd.band, false)],
+    ["Stimmung", labelBand(report.mood?.band, false)],
+    ["Angst", labelBand(report.anx?.band, false)],
+    ["Trauma", labelBand(report.ptsd?.band, false)],
+    ["Zwänge/Impulse", labelBand(report.ocd?.band, false)],
   ];
 
   // Balken-Definition (bestehende Inhalte/Maxima bleiben)
   const bars = [
-    ["Stimmung", report.mood.raw, 27],
-    ["Angst", report.anx.raw, 21],
-    ["Trauma", report.ptsd.raw, 16],
-    ["Zwänge", report.ocd.raw, 8],
-    ["Selbst (↑gut)", report.self.raw, 16, true],
-    ["Beziehungen (↑gut)", report.rel.raw, 16, true],
-    ["Körperstress", report.som.raw, 8],
-    ["Kognitionen", report.cog.raw, 8],
-    ["Resilienz (↑gut)", report.res.raw, 20, true],
+    ["Stimmung", report.mood?.raw, 27],
+    ["Angst", report.anx?.raw, 21],
+    ["Trauma", report.ptsd?.raw, 16],
+    ["Zwänge", report.ocd?.raw, 8],
+    ["Selbst (↑gut)", report.self?.raw, 16, true],
+    ["Beziehungen (↑gut)", report.rel?.raw, 16, true],
+    ["Körperstress", report.som?.raw, 8],
+    ["Kognitionen", report.cog?.raw, 8],
+    ["Resilienz (↑gut)", report.res?.raw, 20, true],
   ];
+
+  // Differenzialdiagnostische Hinweise (gerendert im Return)
+  const ddxHints = (() => {
+    const hints = [];
+    if ((report.mood?.band ?? 0) >= 3 && (report.anx?.band ?? 0) >= 3) {
+      hints.push("Komorbide Depressions- und Angstsymptomatik wahrscheinlich.");
+    }
+    if ((report.ptsd?.band ?? 0) >= 3 && (report.ocd?.band ?? 0) >= 3) {
+      hints.push("Intrusionen und Zwangssymptome – mögliche Überschneidung zwischen PTBS und Zwangsstörung prüfen.");
+    }
+    if ((report.som?.band ?? 0) >= 3 && (report.cog?.band ?? 0) >= 3) {
+      hints.push("Psychosomatische Komponente mit kognitiver Beeinträchtigung wahrscheinlich.");
+    }
+    if ((report.res?.band ?? 0) <= 1 && ((report.mood?.band ?? 0) >= 3 || (report.anx?.band ?? 0) >= 3)) {
+      hints.push("Geringe Resilienz bei gleichzeitiger starker Belastung – Resilienzförderung priorisieren.");
+    }
+    return hints;
+  })();
 
   return (
     <div className="mt-4 animate-fade-in max-w-4xl mx-auto">
@@ -247,36 +264,27 @@ export default function SummaryCard({ report, onRestart, onSave }) {
         </div>
       </div>
 
-      {/* Kritische Hinweise sofort sichtbar */}
-{criticalNotes.length > 0 && (
-  <div className="mb-5 rounded-xl border border-red-300 bg-red-50 p-4">
-    <div className="font-semibold text-red-800 mb-1">Wichtige Hinweise</div>
-    <div className="space-y-1 text-sm text-red-900">
-      {criticalNotes.map((t, i) => (
-        <p key={i}>{t}</p>
-      ))}
-    </div>
-  </div>
-)}
+      {/* Kritische Hinweise sofort sichtbar (ohne Listenpunkte) */}
+      {criticalNotes.length > 0 && (
+        <div className="mb-5 rounded-xl border border-red-300 bg-red-50 p-4">
+          <div className="font-semibold text-red-800 mb-1">Wichtige Hinweise</div>
+          <div className="space-y-1 text-sm text-red-900">
+            {criticalNotes.map((t, i) => (
+              <p key={i}>{t}</p>
+            ))}
+          </div>
+        </div>
+      )}
 
-      {/* Weitere Hinweise (optional ausklappbar) */}
-      {otherNotes.length > 0 && (
-        <div className="mb-6 rounded-xl border border-amber-300 bg-amber-50 p-4">
-          <div className="font-semibold text-amber-900">Hinweise &amp; Selbstfürsorge</div>
-          {!showAllNotes ? (
-            <button
-              className="mt-2 text-xs underline text-amber-900"
-              onClick={() => setShowAllNotes(true)}
-            >
-              Weitere Hinweise anzeigen
-            </button>
-          ) : (
-            <ul className="mt-2 list-disc list-inside space-y-1 text-sm text-amber-900">
-              {otherNotes.map((t, i) => (
-                <li key={i}>{t}</li>
-              ))}
-            </ul>
-          )}
+      {/* Differenzialdiagnostische Hinweise */}
+      {ddxHints.length > 0 && (
+        <div className="mb-8 p-4 rounded-lg border border-red-300 bg-red-50">
+          <h3 className="text-lg font-semibold mb-2">Differenzialdiagnostische Hinweise</h3>
+          <ul className="space-y-1 text-sm text-gray-800">
+            {ddxHints.map((h, idx) => (
+              <li key={idx}>{h}</li>
+            ))}
+          </ul>
         </div>
       )}
 
@@ -295,10 +303,10 @@ export default function SummaryCard({ report, onRestart, onSave }) {
           <div className={`rounded-xl ${COLOR_MAP.indigo} p-4 text-sm`}>
             <h3 className="font-semibold mb-1">Emotionen</h3>
             <p>
-              Stimmung: {labelBand(report.mood.band, false)}.{" "}
-              Angst: {labelBand(report.anx.band, false)}.{" "}
-              Trauma: {labelBand(report.ptsd.band, false)}.{" "}
-              Zwänge/Impulse: {labelBand(report.ocd.band, false)}.
+              Stimmung: {labelBand(report.mood?.band, false)}.{" "}
+              Angst: {labelBand(report.anx?.band, false)}.{" "}
+              Trauma: {labelBand(report.ptsd?.band, false)}.{" "}
+              Zwänge/Impulse: {labelBand(report.ocd?.band, false)}.
             </p>
           </div>
         </Section>
@@ -307,8 +315,8 @@ export default function SummaryCard({ report, onRestart, onSave }) {
           <div className={`rounded-xl ${COLOR_MAP.emerald} p-4 text-sm`}>
             <h3 className="font-semibold mb-1">Selbst & Beziehungen</h3>
             <p>
-              Selbstbild: {labelBand(report.self.band, true)} (höher = besser).{" "}
-              Beziehungen: {labelBand(report.rel.band, true)} (höher = besser).
+              Selbstbild: {labelBand(report.self?.band, true)} (höher = besser).{" "}
+              Beziehungen: {labelBand(report.rel?.band, true)} (höher = besser).
             </p>
           </div>
         </Section>
@@ -317,8 +325,8 @@ export default function SummaryCard({ report, onRestart, onSave }) {
           <div className={`rounded-xl ${COLOR_MAP.amber} p-4 text-sm`}>
             <h3 className="font-semibold mb-1">Körper & Denken</h3>
             <p>
-              Körperlicher Stress: {labelBand(report.som.band, false)}.{" "}
-              Kognitive Muster: {labelBand(report.cog.band, false)}.
+              Körperlicher Stress: {labelBand(report.som?.band, false)}.{" "}
+              Kognitive Muster: {labelBand(report.cog?.band, false)}.
             </p>
           </div>
         </Section>
@@ -327,8 +335,8 @@ export default function SummaryCard({ report, onRestart, onSave }) {
           <div className={`rounded-xl ${COLOR_MAP.sky} p-4 text-sm`}>
             <h3 className="font-semibold mb-1">Ressourcen & Alltag</h3>
             <p>
-              Resilienz: {labelBand(report.res.band, true)} (höher = besser).{" "}
-              {report.func.raw == null
+              Resilienz: {labelBand(report.res?.band, true)} (höher = besser).{" "}
+              {report.func?.raw == null
                 ? "Funktion: n/a."
                 : `Funktionieren: ${
                     report.func.raw > 0.66 ? "deutlich" : report.func.raw > 0.33 ? "mäßig" : "gering"
@@ -341,23 +349,23 @@ export default function SummaryCard({ report, onRestart, onSave }) {
           <div className={`rounded-xl ${COLOR_MAP.violet} p-4 text-sm`}>
             <h3 className="font-semibold mb-1">Kognitive Leistung</h3>
             <p className="space-y-1">
-              {report.tasks.tolEff != null && (
+              {report.tasks?.tolEff != null && (
                 <span className="block">
                   Planung (ToL):{" "}
                   {report.tasks.tolEff >= 0.8 ? "effizient" : report.tasks.tolEff >= 0.5 ? "mittel" : "ausbaufähig"}.
                 </span>
               )}
-              {report.tasks.nbackAcc != null && (
+              {report.tasks?.nbackAcc != null && (
                 <span className="block">
                   Arbeitsgedächtnis (N-Back): {Math.round((report.tasks.nbackAcc || 0) * 100)}% Genauigkeit.
                 </span>
               )}
-              {report.tasks.stroopAcc != null && (
+              {report.tasks?.stroopAcc != null && (
                 <span className="block">
                   Inhibition (Stroop): {Math.round((report.tasks.stroopAcc || 0) * 100)}% korrekt.
                 </span>
               )}
-              {report.tasks.trailsMs != null && (
+              {report.tasks?.trailsMs != null && (
                 <span className="block">
                   Aufmerksamkeit/Tempo (Trails A): {Math.round((report.tasks.trailsMs || 0) / 1000)}s.
                 </span>
