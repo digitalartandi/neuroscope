@@ -1,14 +1,30 @@
 {
-  "PHQ9X": {
-    "intercept": 0.0,
-    "weights": {}
+  "OCD": {
+    "weights": {
+      "o_obs": 1.3,
+      "o_comp": 1.2,
+      "o_time_consuming": 1.4,
+      "o_functional_impairment": 1.4,
+      "o_emotional_distress": 1.2
+    }
   },
-  "GAD7X": {
-    "intercept": 0.0,
-    "weights": {}
+  "SELF": {
+    "weights": {
+      "s_identity_confusion": 1.3,
+      "s_emotional_instability": 1.3,
+      "s_self_acceptance": 1.1,
+      "s_coherence": 1.2
+    }
   },
-  "PCL5X": {
-    "intercept": 0.0,
-    "weights": {}
-  }
+  "REL": {
+    "weights": {
+      "r_fear_of_abandonment": 1.3,
+      "r_fear_of_rejection": 1.2
+    }
+  },
+
+  /* ===== Neu: optionale Gewichte für validierte Skalen ===== */
+  "PHQ9X": { "intercept": 0.0, "weights": {} },
+  "GAD7X": { "intercept": 0.0, "weights": {} },
+  "PCL5X": { "intercept": 0.0, "weights": {} }
 }
