@@ -11,6 +11,7 @@ const TowerOfLondon = lazy(() => import("./modules/TowerOfLondon"));
 const NBack = lazy(() => import("./modules/NBack"));
 const Stroop = lazy(() => import("./modules/Stroop"));
 const Trails = lazy(() => import("./modules/Trails"));
+import MedsModule from "./components/MedsModule";
 
 /* ============ small helpers ============ */
 const STORAGE_KEY = "psyche_state_v1"; // versioniert, um künftige Migrationen zu erleichtern
@@ -21,7 +22,7 @@ const answeredCount = (ans, bank) => {
   const keys = bank
     .filter(isScale)
     .flatMap((m) => m.items?.map((it) => it.key) ?? []);
-  return keys.filter((k) => ans[k] !== undefined).length;
+  return keys.filter((k) => ans[k] != null).length;
 };
 
 export default function App() {
@@ -200,7 +201,7 @@ export default function App() {
   function completionFor(module) {
     const items = module?.items || [];
     if (!items.length) return 0;
-    const done = items.filter((it) => ans[it.key] !== undefined).length;
+    const done = items.filter((it) => ans[it.key] != null).length;
     return done / items.length;
   }
 
@@ -338,6 +339,16 @@ export default function App() {
             isFirst={idx === 0}
           />
         )}
+{current?.kind === "meds" && current.id === "meds" && (
+  <MedsModule
+    answers={ans}
+    onChange={(list) => setAnswer("meds_list", list)}
+    onNext={next}
+    onBack={back}
+    isFirst={idx === 0}
+  />
+)}
+
 
         {current?.kind === "interactive" && current.id === "tol" && (
           <Card className="mt-4">
