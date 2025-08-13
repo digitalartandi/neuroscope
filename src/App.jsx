@@ -5,6 +5,9 @@ import LoadingScreen from "./components/LoadingScreen";
 import { BANK } from "./data/bank";
 import Nav from "./components/Nav";
 import SummaryCard from "./components/SummaryCard";
+import { SecureStore, migrateIfNeeded } from "./secure-store";
+
+
 
 // Lazy load cognitive modules for performance optimization
 const TowerOfLondon = lazy(() => import("./modules/TowerOfLondon"));
@@ -132,13 +135,17 @@ export default function App() {
     return () => document.head.removeChild(style);
   }, []);
 
-  /* ---------- RESTORE ON MOUNT (ohne Überschreiben) ---------- */
-  useEffect(() => {
-    try {
-      const rawNew = localStorage.getItem(STORAGE_KEY);
-      const rawOld = rawNew ?? localStorage.getItem("psyche_state"); // fallback
-      const saved = rawOld ? JSON.parse(rawOld) : null;
 
+
+  
+/* ---------- RESTORE ON MOUNT (verschlüsselt, mit stiller Migration) ---------- */
+useEffect(() => {
+  (async () => {
+    try {
+      // vorhandene Klartext-Daten (falls es sie noch gibt) einmalig verschlüsseln
+      await migrateIfNeeded(STORAGE_KEY, "psyche_state");
+
+      const saved = await SecureStore.get(STORAGE_KEY);
       if (saved && typeof saved === "object") {
         if (saved.answers) setAns(saved.answers);
         if (Number.isFinite(saved.idx)) setIdx(saved.idx);
@@ -149,115 +156,120 @@ export default function App() {
     } finally {
       setHydrated(true); // erst danach dürfen Autosaves laufen
     }
-  }, []);
+  })();
+}, []);
+
+
+
+
 
   /* ---------- AUTOSAVE (nur nach Hydration & bei Fortschritt) ---------- */
-  const hasProgress = started || idx > 0 || Object.keys(ans).length > 0;
-  useEffect(() => {
-    if (!hydrated) return;        // nie vor dem ersten Laden speichern
-    if (!hasProgress) return;     // kein sinnloses Überschreiben leerer Stände
+  
 
-    // Debounce kleines Save, falls in kurzer Zeit mehrere Änderungen kommen
-    const t = setTimeout(() => {
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify({ started, idx, answers: ans }));
-      } catch (e) {
-        console.error("Autosave failed:", e);
-      }
-    }, 250);
-    return () => clearTimeout(t);
-  }, [hydrated, hasProgress, started, idx, ans]);
+/* ---------- AUTOSAVE (verschlüsselt, nur nach Hydration & bei Fortschritt) ---------- */
+const hasProgress = started || idx > 0 || Object.keys(ans).length > 0;
+useEffect(() => {
+  if (!hydrated) return;        // nie vor dem ersten Laden speichern
+  if (!hasProgress) return;     // kein sinnloses Überschreiben leerer Stände
+
+  const t = setTimeout(() => {
+    SecureStore.set(STORAGE_KEY, { started, idx, answers: ans })
+      .catch(e => console.error("Autosave failed:", e));
+  }, 250);
+  return () => clearTimeout(t);
+}, [hydrated, hasProgress, started, idx, ans]);
+
 
   /* ---------- SAVE ON UNLOAD (zusätzliche Sicherheit) ---------- */
-  useEffect(() => {
-    const handler = () => {
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify({ started, idx, answers: ans }));
-      } catch {}
-    };
-    window.addEventListener("beforeunload", handler);
-    return () => window.removeEventListener("beforeunload", handler);
-  }, [started, idx, ans]);
+  
 
-  const current = BANK[idx];
-  const total = useMemo(() => answerableCount(BANK), []);
-  const completed = useMemo(() => answeredCount(ans, BANK), [ans]);
-  const progress = total ? Math.round((completed / total) * 100) : 0;
+useEffect(() => {
+  const handler = () => {
+    SecureStore.set(STORAGE_KEY, { started, idx, answers: ans }).catch(() => {});
+  };
+  window.addEventListener("beforeunload", handler);
+  return () => window.removeEventListener("beforeunload", handler);
+}, [started, idx, ans]);
 
-  useEffect(() => {
-    if (focusRef.current) focusRef.current.focus();
-  }, [idx]);
+const current = BANK[idx];
+const total = useMemo(() => answerableCount(BANK), []);
+const completed = useMemo(() => answeredCount(ans, BANK), [ans]);
+const progress = total ? Math.round((completed / total) * 100) : 0;
 
-  function setAnswer(key, value) {
-    setAns((p) => ({ ...p, [key]: value }));
-  }
-  function jumpTo(id) {
-    const i = BANK.findIndex((m) => m.id === id);
-    if (i !== -1) {
-      setIdx(i);
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    }
-  }
-  function completionFor(module) {
-    const items = module?.items || [];
-    if (!items.length) return 0;
-    const done = items.filter((it) => ans[it.key] != null).length;
-    return done / items.length;
-  }
+useEffect(() => {
+  if (focusRef.current) focusRef.current.focus();
+}, [idx]);
 
-  function next() {
-    if (current?.id === "mood" && (ans["m_suicide"] ?? 0) >= 1) {
-      setSafety(true);
-    }
-    const nextId = current?.next;
-    if (nextId) {
-      const i = BANK.findIndex((m) => m.id === nextId);
-      if (i !== -1) setIdx(i);
-    } else {
-      setIdx((i) => Math.min(i + 1, BANK.length - 1));
-    }
-    setTimeout(() => window.scrollTo({ top: 0, behavior: "smooth" }), 0);
-  }
-  function back() {
-    if (idx > 0) setIdx(idx - 1);
-  }
+function setAnswer(key, value) {
+  setAns((p) => ({ ...p, [key]: value }));
+}
 
-  // Manuelles Speichern mit sichtbarem Feedback
-  function saveNow() {
-    try {
-      const payload = { started, idx, answers: ans };
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
-      setAnnounce("Gespeichert."); // SR
-      setToast({ type: "success", msg: "Fortschritt gespeichert" });
-      setTimeout(() => setToast(null), 2500);
-      return true;
-    } catch (e) {
-      console.error("Save failed:", e);
-      setAnnounce("Speichern fehlgeschlagen.");
-      setToast({ type: "error", msg: "Speichern fehlgeschlagen" });
-      setTimeout(() => setToast(null), 3500);
-      return false;
-    }
+function jumpTo(id) {
+  const i = BANK.findIndex((m) => m.id === id);
+  if (i !== -1) {
+    setIdx(i);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }
+}
 
-  function resetAll() {
-    setAns({});
-    setIdx(0);
-    setStarted(false);
-    try {
-      localStorage.removeItem(STORAGE_KEY);
-      localStorage.removeItem("psyche_state"); // alten Key vorsorglich auch löschen
-    } catch {}
-    setConfirmReset(false);
-    setTimeout(() => window.scrollTo({ top: 0, behavior: "smooth" }), 0);
+function completionFor(module) {
+  const items = module?.items || [];
+  if (!items.length) return 0;
+  const done = items.filter((it) => ans[it.key] != null).length;
+  return done / items.length;
+}
+
+function next() {
+  if (current?.id === "mood" && (ans["m_suicide"] ?? 0) >= 1) {
+    setSafety(true);
   }
-
-  const report = useMemo(() => buildReportUpgraded(ans, progress), [ans, progress]);
-
-  // Ladebildschirm anzeigen solange "loading"
-  if (loading) {
-    return <LoadingScreen onFinish={() => setLoading(false)} />;
+  const nextId = current?.next;
+  if (nextId) {
+    const i = BANK.findIndex((m) => m.id === nextId);
+    if (i !== -1) setIdx(i);
+  } else {
+    setIdx((i) => Math.min(i + 1, BANK.length - 1));
   }
+  setTimeout(() => window.scrollTo({ top: 0, behavior: "smooth" }), 0);
+}
+
+function back() {
+  if (idx > 0) setIdx(idx - 1);
+}
+
+// Manuelles Speichern mit sichtbarem Feedback
+async function saveNow() {
+  try {
+    await SecureStore.set(STORAGE_KEY, { started, idx, answers: ans });
+    setAnnounce("Gespeichert."); // SR
+    setToast({ type: "success", msg: "Fortschritt gespeichert" });
+    setTimeout(() => setToast(null), 2500);
+    return true;
+  } catch (e) {
+    console.error("Save failed:", e);
+    setAnnounce("Speichern fehlgeschlagen.");
+    setToast({ type: "error", msg: "Speichern fehlgeschlagen" });
+    setTimeout(() => setToast(null), 3500);
+    return false;
+  }
+}
+
+async function resetAll() {
+  setAns({});
+  setIdx(0);
+  setStarted(false);
+  try {
+    await SecureStore.remove(STORAGE_KEY);
+    localStorage.removeItem("psyche_state"); // alten Klartext vorsorglich löschen
+  } catch {}
+  setConfirmReset(false);
+  setTimeout(() => window.scrollTo({ top: 0, behavior: "smooth" }), 0);
+}
+
+const report = useMemo(() => buildReportUpgraded(ans, progress), [ans, progress]);
+
+
+
 
   // Landing / Startseite, wenn noch nicht gestartet
   if (!started) {
