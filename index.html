@@ -1,13 +1,67 @@
 <!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Vite + React</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
-  </body>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" href="/favicon.ico" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!-- Titel & Beschreibung -->
+  <title>Neuroscope – Traumasensible Selbstreflexion</title>
+  <meta name="description" content="Neuroscope: Eine traumasensible, datenschutzfreundliche Selbstreflexion – lokal im Browser, ohne Server-Speicherung.">
+
+  <!-- Datenschutz-Hinweis (für Suchmaschinen & User Agents) -->
+  <meta name="robots" content="index, follow, noimageindex, max-snippet:-1, max-image-preview:none">
+  <meta name="referrer" content="no-referrer">
+
+  <!-- Canonical -->
+  <link rel="canonical" href="https://neuroscope.vercel.app/" />
+
+  <!-- Open Graph (neutral, keine sensiblen Inhalte) -->
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="Neuroscope" />
+  <meta property="og:description" content="Traumasensible Selbstreflexion – lokal, privat, sicher." />
+  <meta property="og:url" content="https://neuroscope.vercel.app/" />
+  <meta property="og:image" content="/share-placeholder.png" />
+
+  <!-- Twitter Card (neutral) -->
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:title" content="Neuroscope" />
+  <meta name="twitter:description" content="Traumasensible Selbstreflexion – lokal, privat, sicher." />
+  <meta name="twitter:image" content="/share-placeholder.png" />
+
+  <!-- Structured Data (JSON-LD für KI-optimierte Suche) -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    "name": "Neuroscope",
+    "url": "https://neuroscope.vercel.app/",
+    "description": "Eine traumasensible, datenschutzfreundliche Web-App zur Selbstreflexion – läuft vollständig lokal im Browser.",
+    "applicationCategory": "HealthApplication",
+    "operatingSystem": "Web Browser",
+    "offers": {
+      "@type": "Offer",
+      "price": "0",
+      "priceCurrency": "EUR"
+    }
+  }
+  </script>
+
+  <meta name="theme-color" content="#1d4ed8" />
+</head>
+<body>
+  <div id="root"></div>
+
+  <!-- Datenschutz-/Sharing-Hinweis für User -->
+  <noscript>
+    <p style="background:#fee; color:#600; padding:1em; max-width:600px; margin:auto;">
+      Hinweis: Diese App verarbeitet sensible Daten ausschließlich lokal in Ihrem Browser.
+    Zur zusätzlichen Sicherheit werden gespeicherte Daten verschlüsselt.
+    Es erfolgt keine Übertragung oder Speicherung auf einem Server.
+    Teilen Sie den Link nicht, wenn Sie Ihre Nutzung privat halten möchten.
+    </p>
+  </noscript>
+
+  <script type="module" src="/src/main.jsx"></script>
+</body>
 </html>
