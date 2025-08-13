@@ -785,7 +785,7 @@ function Landing({ onStart }) {
             <PrimaryButton onClick={onStart}>Jetzt starten</PrimaryButton>
           </div>
           <p className="mt-3 text-xs text-gray-500 flex items-center gap-1">
-  {/* Dezentes Schloss-Icon (inline SVG, kein Import nötig) */}
+  {/* Dezentes Schloss-Icon (inline SVG) */}
   <svg
     xmlns="http://www.w3.org/2000/svg"
     className="h-3.5 w-3.5 flex-shrink-0"
@@ -803,7 +803,7 @@ function Landing({ onStart }) {
   </svg>
 
   <span>
-    <strong>Deine Daten bleiben sicher</strong> – sie werden ausschließlich
+    Deine Daten bleiben sicher – sie werden ausschließlich
     <span className="font-medium"> verschlüsselt</span> auf deinem Gerät gespeichert
     und <span className="font-medium">niemals</span> automatisch weitergegeben.
   </span>
