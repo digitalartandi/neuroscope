@@ -272,21 +272,28 @@ const report = useMemo(() => buildReportUpgraded(ans, progress), [ans, progress]
 
 
   // Landing / Startseite, wenn noch nicht gestartet
-  if (!started) {
-    return (
-      <div className="min-h-dvh app-gradient text-gray-900 relative">
-        <BackgroundFX />
-        <Header onSave={saveNow} onRequestReset={() => setConfirmReset(true)} />
-        <main className="mx-auto max-w-xl sm:max-w-2xl lg:max-w-3xl px-4">
-          <Landing onStart={() => setStarted(true)} />
-        </main>
-        <Footer />
+  
+// Loader zuerst anzeigen
+if (loading) {
+  return <LoadingScreen />;
+}
 
-        <div className="sr-only" aria-live="polite">{announce}</div>
-        {toast && <div className="toast">{toast.msg}</div>}
-      </div>
-    );
-  }
+// Danach: Landing (nur einmal!)
+if (!started) {
+  return (
+    <div className="min-h-dvh app-gradient text-gray-900 relative">
+      <BackgroundFX />
+      <Header onSave={saveNow} onRequestReset={() => setConfirmReset(true)} />
+      <main className="mx-auto max-w-xl sm:max-w-2xl lg:max-w-3xl px-4">
+        <Landing onStart={() => setStarted(true)} />
+      </main>
+      <Footer />
+
+      <div className="sr-only" aria-live="polite">{announce}</div>
+      {toast && <div className="toast">{toast.msg}</div>}
+    </div>
+  );
+}
 
   // Haupt-App (Testmodule, Summary etc.)
   return (
