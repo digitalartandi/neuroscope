@@ -378,19 +378,27 @@ export function buildReportUpgraded(ans = {}) {
     .filter((k) => ans[k] != null).length;
   const progress = totalItems ? Math.round((answered / totalItems) * 100) : 0;
 
+
+const tasks = {
+  tolEff: Number.isFinite(ans["tol_eff"]) ? Number(ans["tol_eff"]) : null,
+  nbackAcc: Number.isFinite(ans["nback_acc"]) ? Number(ans["nback_acc"]) : null, // 0..1
+  stroopAcc: Number.isFinite(ans["stroop_acc"]) ? Number(ans["stroop_acc"]) : null, // 0..1
+  trailsMs: Number.isFinite(ans["trails_ms"]) ? Number(ans["trails_ms"]) : null,   // ms
+};
+
+
   // 9) Rückgabe
-  return {
-    progress,
-    mood, anx, ptsd, ocd,
-    self, rel, som, cog, res, func, sleep, adhd, diss, eat, bp, psychosis, stress, pain,
-    meds: medCtx,
-    red_flags,
-    dx: dx.sort((a,b) => b.confidence - a.confidence),
-    quality: {
-      mood: quality_mood,
-      anx: quality_anx,
-      ptsd: quality_ptsd,
-    },
-    ci: { mood: ci_mood, anx: ci_anx, ptsd: ci_ptsd },
-  };
-}
+return {
+  progress,
+  mood, anx, ptsd, ocd,
+  self, rel, som, cog, res, func, sleep, adhd, diss, eat, bp, psychosis, stress, pain,
+  meds: medCtx,
+  red_flags,
+  dx: dx.sort((a,b) => b.confidence - a.confidence),
+  quality: { mood: quality_mood, anx: quality_anx, ptsd: quality_ptsd },
+  ci: { mood: ci_mood, anx: ci_anx, ptsd: ci_ptsd },
+
+  // ⬇️ neu
+  tasks,
+  ptsdTrueRaw: pcl5.raw ?? 0,
+};
