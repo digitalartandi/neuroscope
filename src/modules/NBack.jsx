@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 
 /**
- * N-Back (1-Back) – 4 manuell startbare Läufe
- * - "Treffer"-Button bleibt immer sichtbar (nur disabled).
- * - Klarer Stimuluswechsel (kurze Gap + sanfter Frame-Impuls).
- * - Accuracy pro Lauf: hits / targets
- * - Gesamt-Accuracy (gewichtet): Sum(hits) / Sum(targets)
- *
- * onComplete({ runs, perRun: [{hits,falseAlarms,targets,misses,accuracy}], hits, falseAlarms, accuracy })
+ * Aufmerksamkeitstest – 1‑Back (4 Durchläufe)
+ * - Vier manuell startbare Läufe (Standard), konfigurierbar über Props
+ * - Pro Stimulus ist GENAU EINE Antwort zulässig (Entprellung)
+ * - Klare Stimuluswechsel (Gap + sanfter Frame‑Impuls); Targets etwas länger sichtbar
+ * - Per‑Run‑Kennzahlen: hits, falseAlarms, targets, misses, accuracy
+ * - Gesamt: gewichtete Accuracy (Sum(hits)/Sum(targets))
+ * - onComplete kompatibel zur App: { runs, perRun, hits, falseAlarms, accuracy }
  */
 
 const LETTERS = "BCDFGHJKLMNPQRSTVWXYZ".split(""); // keine Vokale
@@ -17,8 +17,7 @@ function makeSequence(n = 24) {
   let last = "";
   for (let i = 0; i < n; i++) {
     if (i > 0 && Math.random() < 0.28) {
-      // ~28% Targets (Wiederholung)
-      seq.push(last);
+      seq.push(last); // ~28% Targets
     } else {
       let c;
       do c = LETTERS[(Math.random() * LETTERS.length) | 0];
@@ -50,19 +49,32 @@ export default function NBack({
   const [char, setChar] = useState("");
   const [hits, setHits] = useState(0);
   const [falseAlarms, setFalseAlarms] = useState(0);
-  const [results, setResults] = useState([]); // pro Run: {hits,falseAlarms,targets,misses,accuracy}
-  const [tick, setTick] = useState(false);    // sanfter Rahmen-Impuls
+  const [results, setResults] = useState([]); // per run
+  const [tick, setTick] = useState(false);    // sanfter Rahmen‑Impuls
   const [announce, setAnnounce] = useState("");
 
-  // stabile Taktung
+  // stabile Taktung & interne Flags
   const seqRef = useRef([]);
-  const expectRef = useRef(false);
+  const expectRef = useRef(false);         // ist aktueller Reiz Target?
+  const respondedRef = useRef(false);      // schon geantwortet?
   const targetsInRunRef = useRef(0);
   const timerRef = useRef(null);
 
   useEffect(() => () => clearTimeout(timerRef.current), []);
 
-  /* ---------- Lauf-Steuerung ---------- */
+  // Tastatur: Leertaste = Treffer (nur während Stimulus)
+  useEffect(() => {
+    function onKey(e) {
+      if (e.code === "Space" || e.key === " ") {
+        e.preventDefault();
+        onHit();
+      }
+    }
+    if (phase === "show") window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [phase]);
+
+  /* ---------- Lauf‑Steuerung ---------- */
   function startRun() {
     clearTimeout(timerRef.current);
     setPhase("gap"); // beginne mit Gap -> Wechsel klar sichtbar
@@ -70,6 +82,7 @@ export default function NBack({
     setChar("");
     setHits(0);
     setFalseAlarms(0);
+    respondedRef.current = false;
     setAnnounce(`Lauf ${run + 1} startet.`);
     const seq = makeSequence(itemsPerRun);
     seqRef.current = seq;
@@ -109,8 +122,8 @@ export default function NBack({
       onComplete?.({
         runs: totalRuns,
         perRun: results,
-        hits: Math.round(totals.hits / totalRuns),      // Ø Hits pro Lauf
-        falseAlarms: Math.round(totals.fa / totalRuns), // Ø FAs pro Lauf
+        hits: Math.round(totals.hits / totalRuns),      // Ø Hits/Lauf
+        falseAlarms: Math.round(totals.fa / totalRuns), // Ø FAs/Lauf
         accuracy: accWeighted,                           // gewichtete Genauigkeit
       });
     } else {
@@ -128,12 +141,14 @@ export default function NBack({
     setChar("");
     setHits(0);
     setFalseAlarms(0);
+    respondedRef.current = false;
     setAnnounce("Aktueller Lauf wird neu vorbereitet.");
   }
 
-  /* ---------- Stimulus-Takt ---------- */
+  /* ---------- Stimulus‑Takt ---------- */
   function nextStim(prevIndex) {
     clearTimeout(timerRef.current);
+    respondedRef.current = false;
 
     const seq = seqRef.current;
     const next = prevIndex + 1;
@@ -167,8 +182,9 @@ export default function NBack({
   }
 
   function onHit() {
-    // Button bleibt sichtbar; nur klickbar, wenn Stimulus angezeigt wird.
-    if (phase !== "show") return;
+    // Nur 1 Antwort pro Stimulus zulassen
+    if (phase !== "show" || respondedRef.current) return;
+    respondedRef.current = true;
     if (expectRef.current) setHits((h) => h + 1);
     else setFalseAlarms((f) => f + 1);
   }
@@ -179,10 +195,10 @@ export default function NBack({
   /* ---------- UI ---------- */
   return (
     <div className="p-4">
-      <h3 className="text-lg font-semibold">Arbeitsgedächtnis (1-Back)</h3>
+      <h3 className="text-lg font-semibold">Arbeitsgedächtnis (1‑Back)</h3>
       <p className="text-sm text-gray-600">
         Drücke <b>Treffer</b>, wenn der aktuelle Buchstabe <i>gleich dem vorherigen</i> ist.
-        Jeder neue Buchstabe wird durch eine kurze Pause und einen sanften Rahmen-Impuls klar erkennbar.
+        Jeder neue Buchstabe wird durch eine kurze Pause und einen sanften Rahmen‑Impuls klar erkennbar.
       </p>
 
       {/* Stimulus/Status */}
@@ -210,7 +226,7 @@ export default function NBack({
         )}
       </div>
 
-      {/* Konstanter Treffer-Button */}
+      {/* Konstanter Treffer‑Button */}
       <button
         onClick={onHit}
         disabled={!canPress}
@@ -224,7 +240,7 @@ export default function NBack({
         Treffer
       </button>
 
-      {/* Sekundär-Aktionen */}
+      {/* Sekundär‑Aktionen */}
       {phase === "idle" && (
         <div className="mt-3">
           <button
