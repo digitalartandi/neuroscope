@@ -79,26 +79,25 @@ export default function Trails({ onComplete, blocks = ["A", "B"], practicePerBlo
   const [nextIdx, setNextIdx] = useState(0); // 0..targetSeq.length-1
   const startRef = useRef(null);
 
-  // Re-measure on resize (nur das Board beobachten, nicht den Body)
+  // Initial messen (einmal); spätere Re-Layouts passieren explizit beim Start/Blockwechsel
   useEffect(() => {
-    function measure() {
-      const el = boardRef.current;
-      if (!el) return;
-      const rect = el.getBoundingClientRect();
-      const next = { w: Math.round(rect.width), h: Math.round(Math.max(320, rect.height)) };
-      setBox((prev) => (prev.w !== next.w || prev.h !== next.h ? next : prev));
-    }
-    measure();
-    const ro = new ResizeObserver(measure);
-    if (boardRef.current) ro.observe(boardRef.current);
-    return () => ro.disconnect();
+    const el = boardRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    setBox({ w: Math.round(rect.width), h: Math.round(Math.max(320, rect.height)) });
   }, []);
 
   function relayout() {
-    const w = box.w || 0, h = box.h || 380;
+    const el = boardRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const w = Math.round(rect.width), h = Math.round(Math.max(320, rect.height));
     if (!w) return;
     const pts = layOutPositions(tokens.length, w, h, R);
     const shuffled = shuffle(tokens).map((t, i) => ({ ...t, ...pts[i] }));
+    setPos(shuffled);
+    setNextIdx(0);
+  }));
     setPos(shuffled);
     setNextIdx(0);
   }
@@ -109,10 +108,8 @@ export default function Trails({ onComplete, blocks = ["A", "B"], practicePerBlo
     setPhase("idle");
   }, [kind]);
 
-  // Bei Größenänderungen nur neu layouten, wenn NICHT gerade "running"
-  useEffect(() => {
-    if (phase !== "running") relayout();
-  }, [box.w, box.h, phase]);
+  // (Deaktiviert) Kein automatisches Re-Layout bei Größenänderungen – Layout bleibt block-stabil
+  useEffect(() => { /* keep layout stable during run */ }, [box.w, box.h, phase]);
 
   // --- Steuerung ---
   function start() {
@@ -120,6 +117,7 @@ export default function Trails({ onComplete, blocks = ["A", "B"], practicePerBlo
     setNextIdx(0);
     setLastTap(null);
     startRef.current = null;
+    relayout(); // layout snapshot fix: stabil während des Laufs
     setPhase("running");
   }
 
