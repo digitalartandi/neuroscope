@@ -784,9 +784,31 @@ function Landing({ onStart }) {
           <div className="mt-6 max-w-sm">
             <PrimaryButton onClick={onStart}>Jetzt starten</PrimaryButton>
           </div>
-          <p className="mt-3 text-xs text-gray-500">
-            Deine Daten werden nur auf deinem Gerät gespeichert und nicht automatisch weitergegeben.
-          </p>
+          <p className="mt-3 text-xs text-gray-500 flex items-center gap-1">
+  {/* Dezentes Schloss-Icon (inline SVG, kein Import nötig) */}
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    className="h-3.5 w-3.5 flex-shrink-0"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={2}
+    aria-hidden="true"
+  >
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      d="M12 15v2M6 21h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 10-8 0v4h8z"
+    />
+  </svg>
+
+  <span>
+    <strong>Deine Daten bleiben sicher</strong> – sie werden ausschließlich
+    <span className="font-medium"> verschlüsselt</span> auf deinem Gerät gespeichert
+    und <span className="font-medium">niemals</span> automatisch weitergegeben.
+  </span>
+</p>
+
         </div>
       </div>
     </div>
