@@ -257,14 +257,14 @@ export default function Trails({ onComplete, blocks = ["A", "B"], practicePerBlo
               key={t.label}
               onClick={() => handleClick(t.label)}
               className={[
-                "absolute -translate-x-1/2 -translate-y-1/2 rounded-full border grid place-items-center select-none",
+                "absolute -translate-x-1/2 -translate-y-1/2 transform-gpu rounded-full border grid place-items-center select-none",
                 "w-14 h-14 text-lg font-semibold",
                 isDone ? "bg-emerald-50 border-emerald-300 text-emerald-700" : "bg-white border-gray-300 hover:bg-gray-50",
-                isNext ? "ring-2 ring-blue-300 animate-pulse" : "",
+                isNext ? "ring-2 ring-blue-300" : "",
                 flashOk ? "ring-2 ring-emerald-400" : "",
                 flashBad ? "ring-2 ring-rose-400" : "",
               ].join(" ")}
-              style={{ left: t.x, top: t.y }}
+              style={{ left: Math.round(t.x), top: Math.round(t.y) }}
               aria-label={`Punkt ${t.label}${isNext ? " – als nächstes" : ""}`}
             >
               <span className="relative">
