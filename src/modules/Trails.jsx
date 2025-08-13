@@ -97,9 +97,6 @@ export default function Trails({ onComplete, blocks = ["A", "B"], practicePerBlo
     const shuffled = shuffle(tokens).map((t, i) => ({ ...t, ...pts[i] }));
     setPos(shuffled);
     setNextIdx(0);
-  }));
-    setPos(shuffled);
-    setNextIdx(0);
   }
 
   // Positionen neu layouten bei Blockwechsel
