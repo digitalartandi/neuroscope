@@ -79,16 +79,18 @@ export default function Trails({ onComplete, blocks = ["A", "B"], practicePerBlo
   const [nextIdx, setNextIdx] = useState(0); // 0..targetSeq.length-1
   const startRef = useRef(null);
 
-  // Re-measure on resize
+  // Re-measure on resize (nur das Board beobachten, nicht den Body)
   useEffect(() => {
     function measure() {
       const el = boardRef.current;
       if (!el) return;
       const rect = el.getBoundingClientRect();
-      setBox({ w: rect.width, h: Math.max(320, rect.height) });
+      const next = { w: Math.round(rect.width), h: Math.round(Math.max(320, rect.height)) };
+      setBox((prev) => (prev.w !== next.w || prev.h !== next.h ? next : prev));
     }
     measure();
-    const ro = new ResizeObserver(measure); ro.observe(document.body);
+    const ro = new ResizeObserver(measure);
+    if (boardRef.current) ro.observe(boardRef.current);
     return () => ro.disconnect();
   }, []);
 
@@ -101,11 +103,16 @@ export default function Trails({ onComplete, blocks = ["A", "B"], practicePerBlo
     setNextIdx(0);
   }
 
-  // Positionen neu layouten bei Blockwechsel oder Größe
+  // Positionen neu layouten bei Blockwechsel
   useEffect(() => {
     relayout();
     setPhase("idle");
-  }, [kind, box.w, box.h]);
+  }, [kind]);
+
+  // Bei Größenänderungen nur neu layouten, wenn NICHT gerade "running"
+  useEffect(() => {
+    if (phase !== "running") relayout();
+  }, [box.w, box.h, phase]);
 
   // --- Steuerung ---
   function start() {
