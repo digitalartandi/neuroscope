@@ -9,7 +9,10 @@ export default function MedsModule({ answers, onChange, onNext, onBack, isFirst 
     onChange(next);
   }
   function addRow() {
-    onChange([...meds, { name: "", class: "", doseMgPerDay: "", freqPerDay: 1, durationWeeks: "" }]);
+    onChange([
+      ...meds,
+      { name: "", class: "", doseMgPerDay: "", freqPerDay: 1, durationWeeks: "" },
+    ]);
   }
   function removeRow(i) {
     const next = meds.filter((_, idx) => idx !== i);
@@ -51,7 +54,9 @@ export default function MedsModule({ answers, onChange, onNext, onBack, isFirst 
                   {Object.keys(grouped).map((cls) => (
                     <optgroup key={cls} label={cls}>
                       {grouped[cls].map((m) => (
-                        <option key={m.id} value={m.name}>{m.name}</option>
+                        <option key={m.id} value={m.name}>
+                          {m.name}
+                        </option>
                       ))}
                     </optgroup>
                   ))}
@@ -70,7 +75,9 @@ export default function MedsModule({ answers, onChange, onNext, onBack, isFirst 
               <div>
                 <label className="block text-xs font-medium text-gray-700">Dosis (mg/Tag)</label>
                 <input
-                  type="number" step="0.1" min="0"
+                  type="number"
+                  step="0.1"
+                  min="0"
                   className="mt-1 w-full rounded-lg border-gray-300"
                   value={row.doseMgPerDay}
                   onChange={(e) => updateRow(i, { doseMgPerDay: e.target.value })}
@@ -80,7 +87,9 @@ export default function MedsModule({ answers, onChange, onNext, onBack, isFirst 
               <div>
                 <label className="block text-xs font-medium text-gray-700">Einnahme (x/Tag)</label>
                 <input
-                  type="number" step="1" min="1"
+                  type="number"
+                  step="1"
+                  min="1"
                   className="mt-1 w-full rounded-lg border-gray-300"
                   value={row.freqPerDay}
                   onChange={(e) => updateRow(i, { freqPerDay: e.target.value })}
@@ -90,7 +99,9 @@ export default function MedsModule({ answers, onChange, onNext, onBack, isFirst 
               <div>
                 <label className="block text-xs font-medium text-gray-700">Dauer (Wochen)</label>
                 <input
-                  type="number" step="1" min="0"
+                  type="number"
+                  step="1"
+                  min="0"
                   className="mt-1 w-full rounded-lg border-gray-300"
                   value={row.durationWeeks}
                   onChange={(e) => updateRow(i, { durationWeeks: e.target.value })}
