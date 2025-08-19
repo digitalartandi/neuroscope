@@ -2,158 +2,53 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Animierter Pastell-Gradient wie moderne Landingpages */
+/* ===== Basis ===== */
+html { font-family: 'DM Sans', sans-serif; }
+
+/* Sanfter App-Gradient (wird ggf. von App.jsx-Inline-Styles übersteuert) */
 .app-gradient {
   background-image: linear-gradient(120deg, #eef4ff, #eaf6ff, #fff0f6);
   background-size: 200% 200%;
   animation: gradient-x 18s linear infinite alternate;
 }
 
-/* Weiche, große Farb-Blobs */
-.blob {
-  filter: blur(40px);
-  opacity: .35;
-}
-
-/* Gradient-Button-Schimmer (sehr dezent) */
+/* Dezenter Gradient-Button (App.jsx setzt ebenfalls .btn-gradient) */
 .btn-gradient {
   background-image: linear-gradient(90deg, #3b82f6, #2563eb);
 }
-.btn-gradient:hover {
-  filter: brightness(1.05);
-}
+.btn-gradient:hover { filter: brightness(1.05); }
 
-html {
-  font-family: 'DM Sans', sans-serif;
-}
+/* Touch-Zielgrößen */
+button { min-width: 44px; min-height: 44px; }
 
-.app-background::before,
-.app-background::after {
-  content: "";
-  position: absolute;
-  width: 800px;
-  height: 800px;
-  border-radius: 50%;
-  filter: blur(120px);
-  opacity: 0.5;
-  animation: float 20s ease-in-out infinite;
-  z-index: 0;
-}
-
-.app-background::before {
-  background: radial-gradient(circle at center, rgba(99, 102, 241, 0.6), transparent 70%);
-  top: -200px;
-  left: -200px;
-}
-
-.app-background::after {
-  background: radial-gradient(circle at center, rgba(236, 72, 153, 0.5), transparent 70%);
-  bottom: -200px;
-  right: -200px;
-  animation-delay: 5s;
-}
-
-@keyframes float {
-  0%, 100% { transform: translateY(0) translateX(0); }
-  50% { transform: translateY(-40px) translateX(30px); }
-}
-
-/* === Animated Blur Background === */
-.bg-animated-blur {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  overflow: hidden;
-  z-index: -1;
-}
-
-.bg-animated-blur::before,
-.bg-animated-blur::after {
-  content: '';
-  position: absolute;
-  width: 80vmax;
-  height: 80vmax;
-  background: radial-gradient(circle at center, rgba(99,102,241,0.6), transparent 70%);
-  filter: blur(120px);
-  animation: moveBlobs 18s ease-in-out infinite alternate;
-}
-
-.bg-animated-blur::after {
-  background: radial-gradient(circle at center, rgba(236,72,153,0.6), transparent 70%);
-  animation-delay: 9s;
-}
-
-@keyframes moveBlobs {
-  0% {
-    transform: translate(-20%, -20%) scale(1);
-  }
-  50% {
-    transform: translate(30%, 10%) scale(1.2);
-  }
-  100% {
-    transform: translate(-10%, 30%) scale(0.9);
-  }
-}
-
-
-
+/* ===== Animations ===== */
 @keyframes gradient-x {
-  0% {
-    background-position: 0% 50%;
-  }
-  100% {
-    background-position: 100% 50%;
-  }
+  0% { background-position: 0% 50%; }
+  100% { background-position: 100% 50%; }
 }
-
-.animate-gradient-x {
-  background-size: 200% 200%;
-  animation: gradient-x 6s ease infinite alternate;
-}
+.animate-gradient-x { background-size: 200% 200%; animation: gradient-x 6s ease infinite alternate; }
 
 @keyframes fade-in {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
+.animate-fade-in { animation: fade-in 1.5s ease forwards; }
 
-.animate-fade-in {
-  animation: fade-in 1.5s ease forwards;
-}
-
-.animate-pulse {
-  animation: pulse 2s ease-in-out infinite;
-}
-
+/* Eigene Pulse-Variante (OK, falls Tailwind animate-pulse nicht genutzt wird) */
 @keyframes pulse {
-  0%, 100% {
-    transform: scale(1);
-    opacity: 1;
-  }
-  50% {
-    transform: scale(1.05);
-    opacity: 0.85;
-  }
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50%      { transform: scale(1.05); opacity: 0.85; }
 }
+.animate-pulse { animation: pulse 2s ease-in-out infinite; }
 
-/* Container für animierte Blur-Flächen */
+/* ===== Hintergrund-Blur (konsolidiert) ===== */
 .bg-animated-blur {
   position: fixed;
-  top: 0; left: 0;
-  width: 100%; height: 100%;
+  inset: 0;
   overflow: hidden;
   pointer-events: none;
   z-index: -1;
 }
-
-/* Die einzelnen Blur-Blobs */
 .bg-animated-blur::before,
 .bg-animated-blur::after {
   content: "";
@@ -162,60 +57,39 @@ html {
   border-radius: 50%;
   filter: blur(120px);
   opacity: 0.5;
-  animation: moveBlob 20s ease-in-out infinite alternate;
   will-change: transform;
+  animation: moveBlob 20s ease-in-out infinite alternate;
 }
-
-/* Farbe und Startposition der Blobs */
 .bg-animated-blur::before {
-  background: radial-gradient(circle at center, rgba(99, 102, 241, 0.6), transparent 70%);
-  top: -20vmax;
-  left: -20vmax;
+  background: radial-gradient(circle at center, rgba(99,102,241,0.6), transparent 70%);
+  top: -20vmax; left: -20vmax;
 }
-
 .bg-animated-blur::after {
-  background: radial-gradient(circle at center, rgba(236, 72, 153, 0.6), transparent 70%);
-  bottom: -20vmax;
-  right: -20vmax;
+  background: radial-gradient(circle at center, rgba(236,72,153,0.6), transparent 70%);
+  bottom: -20vmax; right: -20vmax;
   animation-delay: 10s;
 }
-
-/* Bewegung der Blobs */
 @keyframes moveBlob {
-  0% {
-    transform: translate(0, 0) scale(1);
-  }
-  50% {
-    transform: translate(30%, 20%) scale(1.1);
-  }
-  100% {
-    transform: translate(-20%, 10%) scale(0.9);
-  }
+  0%   { transform: translate(0, 0) scale(1); }
+  50%  { transform: translate(30%, 20%) scale(1.1); }
+  100% { transform: translate(-20%, 10%) scale(0.9); }
 }
 
-
-button {
-  min-width: 44px;
-  min-height: 44px;
-}
-
+/* ===== Nav (keine top-Überschreibung; Tailwind aus Nav.jsx setzt sie selbst) ===== */
 nav.sticky {
-  padding-left: 1rem;  /* besserer Abstand links */
-  padding-right: 1rem; /* besserer Abstand rechts */
-  overflow-x: auto;    /* ermöglicht horizontales Scrollen */
-  -webkit-overflow-scrolling: touch; /* smoother scroll auf iOS */
-  scrollbar-width: none; /* Firefox scrollbar ausblenden */
-}
-
-nav.sticky::-webkit-scrollbar {
-  display: none; /* Chrome scrollbar ausblenden */
-}
-
-nav.sticky {
-  top: 69px;
-  z-index: 29; /* Oder 30, je nachdem wie der Header ist */
+  padding-left: 1rem;
+  padding-right: 1rem;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
   background: rgba(255, 255, 255, 0.7);
   backdrop-filter: blur(10px);
-  /* ...restliche Styles */
 }
 
+/* Scrollbar-Helfer (wird in Nav.jsx via .no-scrollbar genutzt) */
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+
+/* ===== Motion-Reduction ===== */
+@media (prefers-reduced-motion: reduce) {
+  * { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; }
+}
